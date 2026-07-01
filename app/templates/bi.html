@@ -1,0 +1,649 @@
+{% extends "base.html" %}
+{% block title %}Business Intelligence — Grivora AI{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ── BIA Studio Layout ── */
+.bia-shell{display:flex;min-height:100vh;padding-top:66px;}
+.bia-sidebar{width:228px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);position:fixed;top:66px;bottom:0;left:0;overflow-y:auto;z-index:100;padding:14px 0 40px;}
+.bia-sidebar-header{padding:0 14px 12px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.bia-sidebar-title{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent3);}
+.bia-sidebar-sub{font-size:11px;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bia-nav-item{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;text-align:left;}
+.bia-nav-item:hover{background:rgba(8,145,178,.07);}
+.bia-nav-item.active{background:rgba(8,145,178,.12);border-right:3px solid var(--accent3);}
+.bia-nav-item.done .nav-num{background:var(--success);color:#fff;}
+.bia-nav-item.active .nav-num{background:var(--accent3);color:#fff;}
+.nav-num{width:20px;height:20px;border-radius:50%;background:var(--border);color:var(--text2);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;}
+.nav-lbl{font-size:12px;font-weight:600;color:var(--text2);line-height:1.3;}
+.bia-nav-item.active .nav-lbl{color:var(--accent3);}
+.bia-nav-item.done .nav-lbl{color:var(--success);}
+.bia-sidebar-section{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:10px 14px 3px;}
+/* ── Main area ── */
+.bia-main{margin-left:228px;flex:1;padding:26px 30px 80px;min-height:calc(100vh - 66px);}
+.bia-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(8,145,178,.1);color:var(--accent3);border:1px solid rgba(8,145,178,.2);margin-bottom:8px;}
+.bia-page-title{font-size:22px;font-weight:900;color:var(--text);margin:0 0 4px;}
+.bia-page-sub{font-size:14px;color:var(--text2);margin:0;}
+.bia-page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px;}
+.bia-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:16px;}
+.bia-card-title{font-size:14px;font-weight:800;color:var(--text);margin:0 0 4px;}
+.bia-card-sub{font-size:13px;color:var(--text2);margin:0 0 16px;}
+/* ── KPIs ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:11px;margin-bottom:20px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden;transition:transform .15s,box-shadow .15s;}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent3),var(--accent2));}
+.kpi-value{font-size:22px;font-weight:900;color:var(--text);line-height:1;}
+.kpi-label{font-size:10px;color:var(--text2);margin-top:4px;text-transform:uppercase;letter-spacing:.05em;}
+/* ── Charts ── */
+.chart-wrap{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
+.chart-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;}
+.dash-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:13px;}
+.dash-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;}
+@media(max-width:900px){.dash-grid-2,.dash-grid-3{grid-template-columns:1fr;}}
+/* ── Insights ── */
+.insight-card{display:flex;align-items:flex-start;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:8px;}
+.insight-card.success{border-left:3px solid var(--success);}
+.insight-card.warning{border-left:3px solid var(--warning);}
+.insight-card.info{border-left:3px solid var(--accent3);}
+.insight-icon{font-size:17px;flex-shrink:0;margin-top:1px;}
+.insight-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px;}
+.insight-body{font-size:12px;color:var(--text2);line-height:1.6;}
+/* ── ETL steps ── */
+.etl-step{display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--bg);border:1px solid var(--border);border-radius:9px;margin-bottom:6px;}
+.etl-num{width:24px;height:24px;border-radius:50%;background:var(--border);color:var(--text2);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.etl-step.done .etl-num{background:var(--success);color:#fff;}
+.etl-step.active .etl-num{background:var(--accent3);color:#fff;}
+.etl-info{flex:1;}
+.etl-name{font-size:12px;font-weight:700;color:var(--text);}
+.etl-desc{font-size:11px;color:var(--text2);}
+.etl-status{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--border);color:var(--text2);}
+.etl-step.done .etl-status{background:rgba(5,150,105,.15);color:var(--success);}
+.etl-step.active .etl-status{background:rgba(8,145,178,.15);color:var(--accent3);}
+/* ── Forms ── */
+.bia-select,.bia-input{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--text);font-size:13px;width:100%;outline:none;}
+.bia-label{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text2);display:block;margin-bottom:5px;}
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:13px;}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:13px;}
+@media(max-width:700px){.form-grid-2,.form-grid-3{grid-template-columns:1fr;}}
+/* ── Buttons ── */
+.btn-bia{display:inline-flex;align-items:center;gap:6px;background:var(--accent3);color:#fff;border:none;border-radius:9px;padding:9px 17px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .2s;}
+.btn-bia:hover{opacity:.85;}
+.btn-bia:disabled{opacity:.5;cursor:not-allowed;}
+.btn-ghost{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:9px 17px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;}
+.btn-ghost:hover{background:var(--border);}
+.bia-nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:22px;padding-top:16px;border-top:1px solid var(--border);gap:12px;}
+/* ── Status ── */
+.st-ok{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--success);background:rgba(5,150,105,.1);padding:3px 9px;border-radius:20px;}
+.st-err{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--danger);background:rgba(220,38,38,.1);padding:3px 9px;border-radius:20px;}
+/* ── Ask chat ── */
+.ask-messages{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px;min-height:160px;max-height:300px;overflow-y:auto;margin-bottom:10px;}
+.msg-user{display:flex;justify-content:flex-end;margin-bottom:8px;}
+.msg-user span{background:var(--accent3);color:#fff;padding:7px 12px;border-radius:12px 12px 3px 12px;font-size:13px;max-width:80%;}
+.msg-ai{display:flex;gap:7px;margin-bottom:8px;}
+.msg-ai-icon{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent3),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+.msg-ai-text{background:var(--surface);border:1px solid var(--border);padding:7px 12px;border-radius:3px 12px 12px 12px;font-size:13px;color:var(--text);max-width:85%;line-height:1.6;}
+.ask-row{display:flex;gap:7px;}
+.ask-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-size:13px;outline:none;}
+/* ── Chips ── */
+.i-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(8,145,178,.1);color:var(--accent3);margin:2px 3px 2px 0;}
+.i-chip.green{background:rgba(5,150,105,.1);color:var(--success);}
+.i-chip.amber{background:rgba(217,119,6,.1);color:var(--warning);}
+/* ── Loading ── */
+.bia-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:36px;color:var(--text2);font-size:14px;}
+.bia-spin{width:24px;height:24px;border:3px solid rgba(8,145,178,.2);border-top-color:var(--accent3);border-radius:50%;animation:biaSpin .7s linear infinite;}
+@keyframes biaSpin{to{transform:rotate(360deg)}}
+/* ── AI box ── */
+.bia-ai-box{background:linear-gradient(135deg,rgba(8,145,178,.08),rgba(124,58,237,.06));border:1px solid rgba(8,145,178,.2);border-left:3px solid var(--accent3);border-radius:0 10px 10px 0;padding:12px 16px;font-size:13px;color:var(--text);line-height:1.7;margin:11px 0;}
+.bia-ai-label{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent3);margin-bottom:6px;}
+/* ── Real-time ── */
+.rt-dot{width:7px;height:7px;border-radius:50%;background:var(--success);animation:rtPulse 1.5s ease-in-out infinite;display:inline-block;margin-right:5px;}
+@keyframes rtPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.6}}
+/* ── Log ── */
+.log-row{display:flex;align-items:center;gap:9px;padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px;}
+.log-ts{color:var(--text3);width:130px;flex-shrink:0;}
+.log-type{padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700;background:var(--border);color:var(--text2);width:80px;text-align:center;flex-shrink:0;}
+.log-detail{color:var(--text2);flex:1;}
+/* ── Stat table ── */
+.stat-table{width:100%;border-collapse:collapse;font-size:12px;}
+.stat-table th{text-align:left;padding:7px 9px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);}
+.stat-table td{padding:6px 9px;border-bottom:1px solid rgba(0,0,0,.04);color:var(--text);}
+.stat-table tr:last-child td{border-bottom:none;}
+/* ── Pages ── */
+.bia-page{display:none;}
+.bia-page.active{display:block;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bia-shell">
+
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="bia-sidebar">
+    <div class="bia-sidebar-header">
+      <div class="bia-sidebar-title">03 · BI Studio</div>
+      <div class="bia-sidebar-sub" id="sb-file-name">No data loaded</div>
+    </div>
+    <div class="bia-sidebar-section">Data Pipeline</div>
+    <button class="bia-nav-item active" onclick="showPage('p1')" id="nav-p1"><div class="nav-num" id="ns-p1">1</div><div class="nav-lbl">Data Integration</div></button>
+    <button class="bia-nav-item" onclick="showPage('p2')" id="nav-p2"><div class="nav-num" id="ns-p2">2</div><div class="nav-lbl">ETL &amp; Storage</div></button>
+    <button class="bia-nav-item" onclick="showPage('p3')" id="nav-p3"><div class="nav-num" id="ns-p3">3</div><div class="nav-lbl">KPI Engine</div></button>
+    <div class="bia-sidebar-section">Analysis</div>
+    <button class="bia-nav-item" onclick="showPage('p4')" id="nav-p4"><div class="nav-num" id="ns-p4">4</div><div class="nav-lbl">EDA</div></button>
+    <button class="bia-nav-item" onclick="showPage('p5')" id="nav-p5"><div class="nav-num" id="ns-p5">5</div><div class="nav-lbl">Visualization</div></button>
+    <button class="bia-nav-item" onclick="showPage('p6')" id="nav-p6"><div class="nav-num" id="ns-p6">6</div><div class="nav-lbl">Dashboard</div></button>
+    <div class="bia-sidebar-section">Intelligence</div>
+    <button class="bia-nav-item" onclick="showPage('p7')" id="nav-p7"><div class="nav-num" id="ns-p7">7</div><div class="nav-lbl">Advanced Analytics</div></button>
+    <button class="bia-nav-item" onclick="showPage('p8')" id="nav-p8"><div class="nav-num" id="ns-p8">8</div><div class="nav-lbl">AI Insights</div></button>
+    <button class="bia-nav-item" onclick="showPage('p9')" id="nav-p9"><div class="nav-num" id="ns-p9">9</div><div class="nav-lbl">Ask Your Data</div></button>
+    <div class="bia-sidebar-section">Platform</div>
+    <button class="bia-nav-item" onclick="showPage('p10')" id="nav-p10"><div class="nav-num" id="ns-p10">10</div><div class="nav-lbl">Real-Time</div></button>
+    <button class="bia-nav-item" onclick="showPage('p11')" id="nav-p11"><div class="nav-num" id="ns-p11">11</div><div class="nav-lbl">Export &amp; Reports</div></button>
+    <button class="bia-nav-item" onclick="showPage('p12')" id="nav-p12"><div class="nav-num" id="ns-p12">12</div><div class="nav-lbl">Monitoring</div></button>
+  </aside>
+
+  <!-- ══ MAIN ══ -->
+  <main class="bia-main">
+
+    <!-- PAGE 1: Data Integration -->
+    <div class="bia-page active" id="page-p1">
+      <div class="bia-page-header">
+        <div><div class="bia-badge">Step 1 · Data Integration</div><h1 class="bia-page-title">Data Integration &amp; ETL</h1><p class="bia-page-sub">Connect your data source and begin the ETL pipeline.</p></div>
+        <div id="p1-status"></div>
+      </div>
+      <div class="bia-card">
+        <div class="bia-card-title">📂 Active Dataset</div>
+        <div id="p1-file-info" style="display:none;">
+          <div class="bia-ai-box"><div class="bia-ai-label">📁 Dataset</div><div id="p1-fname" style="font-weight:800;font-size:15px;"></div><div id="p1-fmeta" style="font-size:12px;color:var(--text2);margin-top:3px;"></div></div>
+        </div>
+        <div id="p1-no-file" style="display:none;text-align:center;padding:28px;border:2px dashed var(--border);border-radius:12px;">
+          <div style="font-size:30px;margin-bottom:8px;">📂</div><div style="font-weight:700;margin-bottom:8px;">No dataset loaded</div>
+          <a href="/upload" class="btn-bia" style="text-decoration:none;display:inline-flex;margin-top:8px;">Upload Data →</a>
+        </div>
+      </div>
+      <div class="bia-card">
+        <div class="bia-card-title">⚙️ ETL Pipeline</div>
+        <div id="etl-steps">
+          <div class="etl-step" id="etl-1"><div class="etl-num">1</div><div class="etl-info"><div class="etl-name">Extract</div><div class="etl-desc">Read from source</div></div><div class="etl-status">Waiting</div></div>
+          <div class="etl-step" id="etl-2"><div class="etl-num">2</div><div class="etl-info"><div class="etl-name">Transform</div><div class="etl-desc">Clean, normalize, encode</div></div><div class="etl-status">Waiting</div></div>
+          <div class="etl-step" id="etl-3"><div class="etl-num">3</div><div class="etl-info"><div class="etl-name">Load</div><div class="etl-desc">Store to cache</div></div><div class="etl-status">Waiting</div></div>
+          <div class="etl-step" id="etl-4"><div class="etl-num">4</div><div class="etl-info"><div class="etl-name">Index</div><div class="etl-desc">Optimize for fast queries</div></div><div class="etl-status">Waiting</div></div>
+        </div>
+        <button class="btn-bia" style="margin-top:12px;" onclick="runETL()">▶ Run ETL Pipeline</button>
+      </div>
+      <div class="bia-nav-row"><a href="/predict" class="btn-ghost" style="text-decoration:none;">← Predictive Modeling</a><button class="btn-bia" onclick="showPage('p2')">Next: ETL &amp; Storage →</button></div>
+    </div>
+
+    <!-- PAGE 2: ETL & Storage -->
+    <div class="bia-page" id="page-p2">
+      <div class="bia-page-header"><div><div class="bia-badge">Step 2 · ETL</div><h1 class="bia-page-title">Data Storage &amp; Management</h1><p class="bia-page-sub">Transform and manage your data.</p></div></div>
+      <div class="bia-card">
+        <div class="bia-card-title">🔧 Transformation Options</div>
+        <div class="form-grid-3">
+          <div><label class="bia-label">Missing Values</label><select class="bia-select" id="t-fill"><option value="auto">Auto (median for nums)</option><option value="mean">Mean</option><option value="median">Median</option><option value="zero">Zero</option></select></div>
+          <div style="display:flex;align-items:flex-end;"><label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;"><input type="checkbox" id="t-dedup" checked style="accent-color:var(--accent3);width:14px;height:14px;"> Remove Duplicates</label></div>
+          <div style="display:flex;align-items:flex-end;"><label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;"><input type="checkbox" id="t-norm" style="accent-color:var(--accent3);width:14px;height:14px;"> Normalize [0,1]</label></div>
+        </div>
+        <button class="btn-bia" onclick="runTransform()">⚡ Apply Transformation</button>
+      </div>
+      <div class="bia-card" id="transform-result" style="display:none;"><div class="bia-card-title">✅ Transformation Log</div><div id="transform-log"></div></div>
+      <div class="bia-nav-row"><button class="btn-ghost" onclick="showPage('p1')">← Back</button><button class="btn-bia" onclick="showPage('p3')">Next: KPIs →</button></div>
+    </div>
+
+    <!-- PAGE 3: KPI Engine -->
+    <div class="bia-page" id="page-p3">
+      <div class="bia-page-header"><div><div class="bia-badge">Step 3 · KPI Engine</div><h1 class="bia-page-title">KPI Processing Engine</h1><p class="bia-page-sub">Auto-detected business metrics from your data.</p></div><button class="btn-bia" onclick="loadKPIs()">🔄 Compute KPIs</button></div>
+      <div id="kpi-loading" class="bia-loading" style="display:none;"><div class="bia-spin"></div> Computing KPIs…</div>
+      <div class="kpi-grid" id="kpi-cards"></div>
+      <div class="bia-card" id="agg-card" style="display:none;">
+        <div class="bia-card-title">📅 Time Aggregations</div>
+        <div style="display:flex;gap:6px;margin-bottom:11px;flex-wrap:wrap;">
+          <button onclick="showAgg('monthly')" class="btn-ghost" style="font-size:11px;padding:5px 11px;" id="agg-btn-monthly">Monthly</button>
+          <button onclick="showAgg('weekly')" class="btn-ghost" style="font-size:11px;padding:5px 11px;" id="agg-btn-weekly">Weekly</button>
+          <button onclick="showAgg('quarterly')" class="btn-ghost" style="font-size:11px;padding:5px 11px;" id="agg-btn-quarterly">Quarterly</button>
+          <button onclick="showAgg('yearly')" class="btn-ghost" style="font-size:11px;padding:5px 11px;" id="agg-btn-yearly">Yearly</button>
+        </div>
+        <div class="chart-wrap"><canvas id="agg-chart" height="170"></canvas></div>
+      </div>
+      <div class="bia-nav-row"><button class="btn-ghost" onclick="showPage('p2')">← Back</button><button class="btn-bia" onclick="showPage('p4')">Next: EDA →</button></div>
+    </div>
+
+    <!-- PAGE 4: EDA -->
+    <div class="bia-page" id="page-p4">
+      <div class="bia-page-header"><div><div class="bia-badge">Step 4 · EDA</div><h1 class="bia-page-title">Exploratory Data Analysis</h1><p class="bia-page-sub">Statistics, correlations, distributions and outlier detection.</p></div><button class="btn-bia" onclick="loadEDA()">📊 Run EDA</button></div>
+      <div id="eda-loading" class="bia-loading" style="display:none;"><div class="bia-spin"></div> Analyzing…</div>
+      <div id="eda-overview" style="display:none;">
+        <div class="bia-card">
+          <div class="bia-card-title">📋 Dataset Health</div>
+          <div id="eda-chips" style="margin-bottom:13px;"></div>
+          <div class="dash-grid-2">
+            <div><div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;">COLUMN STATISTICS</div>
+              <div style="overflow-x:auto;max-height:260px;overflow-y:auto;"><table class="stat-table"><thead><tr><th>Column</th><th>Mean</th><th>Median</th><th>Std</th><th>Min</th><th>Max</th><th>Outliers</th></tr></thead><tbody id="eda-stat-body"></tbody></table></div>
+            </div>
+            <div><div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;">DISTRIBUTION</div><div class="chart-wrap"><canvas id="eda-dist-chart" height="190"></canvas></div></div>
+          </div>
+        </div>
+        <div class="bia-card"><div class="bia-card-title">🔗 Correlation Matrix</div><div class="chart-wrap"><canvas id="eda-corr-chart" height="260"></canvas></div></div>
+      </div>
+      <div class="bia-nav-row"><button class="btn-ghost" onclick="showPage('p3')">← Back</button><button class="btn-bia" onclick="showPage('p5')">Next: Visualization →</button></div>
+    </div>
+
+    <!-- PAGE 5: Visualization Builder -->
+    <div class="bia-page" id="page-p5">
+      <div class="bia-page-header"><div><div class="bia-badge">Step 5 · Visualization</div><h1 class="bia-page-title">Visualization Builder</h1><p class="bia-page-sub">Build any chart interactively.</p></div></div>
+      <div class="bia-card">
+        <div class="bia-card-title">🎨 Chart Configuration</div>
+        <div class="form-grid-3">
+          <div><label class="bia-label">Chart Type</label>
+            <select class="bia-select" id="viz-type"><option value="bar">Bar Chart</option><option value="line">Line Chart</option><option value="pie">Pie / Donut</option><option value="scatter">Scatter Plot</option><option value="histogram">Histogram</option><option value="heatmap">Heatmap</option></select>
+          </div>
+          <div><label class="bia-label">X / Category</label><select class="bia-select" id="viz-x"></select></div>
+          <div><label class="bia-label">Y / Value</label><select class="bia-select" id="viz-y"></select></div>
+          <div><label class="bia-label">Aggregation</label><select class="bia-select" id="viz-agg"><option value="sum">Sum</option><option value="mean">Mean</option><option value="count">Count</option><option value="max">Max</option><option value="min">Min</option></select></div>
+          <div style="display:flex;align-items:flex-end;"><button class="btn-bia" onclick="buildVizChart()" style="width:100%;">🎯 Build Chart</button></div>
+        </div>
+      </div>
+      <div class="bia-card" id="viz-result" style="display:none;"><div id="viz-chart-title" class="bia-card-title"></div><div class="chart-wrap"><canvas id="viz-chart" height="260"></canvas></div></div>
+      <div class="bia-nav-row"><button class="btn-ghost" onclick="showPage('p4')">← Back</button><button class="btn-bia" onclick="showPage('p6')">Next: Dashboard →</button></div>
+    </div>
+
+    <!-- PAGE 6: Executive Dashboard -->
+    <div class="bia-page" id="page-p6">
+      <div class="bia-page-header"><div><div class="bia-badge">Step 6 · Dashboard</div><h1 class="bia-page-title">Executive Dashboard</h1><p class="bia-page-sub">Multi-panel KPI dashboard with charts, trends, and insights.</p></div><button class="btn-bia" onclick="loadDashboard()">🔄 Refresh</button></div>
+      <div id="dash-loading" class="bia-loading" style="display:none;"><div class="bia-spin"></div> Building dashboard…</div>
+      <div id="dash-content" style="display:none;">
+        <div class="kpi-grid" id="dash-kpi-cards"></div>
+        <div class="dash-grid-2" style="margin-bottom:13px;">
+          <div class="chart-wrap" id="dash-ts-wrap" style="display:none;"><div class="chart-title">📈 Revenue Trend</div><canvas id="dash-ts-chart" height="190"></canvas></div>
+          <div class="chart-wrap" id="dash-bar-wrap" style="display:none;"><div class="chart-title">📊 By Category</div><canvas id="dash-bar-chart" height="190"></canvas></div>
+        </div>
+        <div class="dash-grid-2" style="margin-bottom:13px;">
+          <div class="chart-wrap" id="dash-pie-wrap" style="display:none;"><div class="chart-title">🥧 Share Breakdown</div><canvas id="dash-pie-chart" height="210"></canvas></div>
+          <div class="chart-wrap" id="dash-hist-wrap" style="display:none;"><div class="chart-title">📉 Distribution</div><canvas id="dash-hist-chart" height="210"></canvas></div>
+        </div>
+        <div class="bia-card"><div class="bia-card-title">🔍 Auto-Detected Insights</div><div id="dash-insights"></div></div>
+      </div>
+      <div class="bia-nav-row"><button class="btn-ghost" onclick="showPage('p5')">← Back</button><button class="btn-bia" onclick="showPage('p7')">Next: Advanced Analytics →</button></div>
+    </div>
+
+    <!-- PAGE 7: Advanced Analytics -->
+    <div class="bia-page" id="page-p7">
+      <div class="bia-page-header"><div><div class="bia-badge">Step 7 · Advanced Analytics</div><h1 class="bia-page-title">Advanced Analytics</h1><p class="bia-page-sub">Customer segmentation, anomaly detection, and forecasting.</p></div></div>
+      <div class="bia-card">
+        <div class="bia-card-title">🎯 Customer Segmentation (K-Means)</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <label class="bia-label" style="margin:0;white-space:nowrap;">Clusters:</label>
+          <input type="range" min="2" max="8" value="4" id="cluster-k" oninput="document.getElementById('cluster-k-val').textContent=this.value" style="flex:1;accent-color:var(--accent3);">
+          <span id="cluster-k-val" style="font-weight:800;color:var(--accent3);width:20px;">4</span>
+          <button class="btn-bia" onclick="runSegmentation()">▶ Run</button>
+        </div>
+        <div id="seg-loading" class="bia-loading" style="display:none;"><div class="bia-spin"></div> Clustering…</div>
+        <div id="seg-result" style="display:none;"><div class="chart-wrap"><canvas id="seg-scatter" height="240"></canvas></div><div id="seg-summary" style="margin-top:8px;font-size:12px;color:var(--text2);"></div></div>
+      </div>
+      <div class="bia-card">
+        <div class="bia-card-title">🚨 Anomaly Detection</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <div style="flex:1;"><label class="bia-label">Target Column</label><select class="bia-select" id="anomaly-col"></select></div>
+          <div style="display:flex;align-items:flex-end;"><button class="btn-bia" onclick="runAnomalies()">🔍 Detect</button></div>
+        </div>
+        <div id="anomaly-result" style="display:none;"><div id="anomaly-stats" style="margin-bottom:11px;"></div><div class="chart-wrap"><canvas id="anomaly-chart" height="170"></canvas></div></div>
+      </div>
+      <div class="bia-card">
+        <div class="bia-card-title">🔮 Time-Series Forecasting</div>
+        <div class="form-grid-3" style="margin-bottom:11px;">
+          <div><label class="bia-label">Date Column</label><select class="bia-select" id="fc-date-col"></select></div>
+          <div><label class="bia-label">Value Column</label><select class="bia-select" id="fc-val-col"></select></div>
+          <div><label class="bia-label">Periods</label><select class="bia-select" id="fc-periods"><option value="6">6 months</option><option value="12" selected>12 months</option><option value="24">24 months</option></select></div>
+        </div>
+        <button class="btn-bia" onclick="runForecast()">📈 Forecast</button>
+        <div id="fc-result" style="display:none;margin-top:11px;"><div class="chart-wrap"><canvas id="fc-chart" height="210"></canvas></div></div>
+      </div>
+      <div class="bia-nav-row"><button class="btn-ghost" onclick="showPage('p6')">← Back</button><button class="btn-bia" onclick="showPage('p8')">Next: AI Insights →</button></div>
+    </div>
+
+    <!-- PAGE 8: AI Insights -->
+    <div class="bia-page" id="page-p8">
+      <div class="bia-page-header"><div><div class="bia-badge">Step 8 · AI Insights</div><h1 class="bia-page-title">AI-Powered Business Insights</h1><p class="bia-page-sub">Auto-generated insights, trend detection, and recommendations.</p></div><button class="btn-bia" onclick="loadInsights()">🧠 Generate Insights</button></div>
+      <div id="insights-loading" class="bia-loading" style="display:none;"><div class="bia-spin"></div> Analyzing patterns…</div>
+      <div id="insights-content" style="display:none;">
+        <div class="bia-card"><div class="bia-card-title">🔍 Auto-Detected Insights</div><div id="auto-insights-list"></div></div>
+        <div class="bia-card" id="ai-insight-card" style="display:none;"><div class="bia-card-title">🤖 Gemini AI Analysis</div><div class="bia-ai-box"><div class="bia-ai-label">AI Recommendations</div><div id="ai-insight-text"></div></div></div>
+      </div>
+      <div class="bia-nav-row"><button class="btn-ghost" onclick="showPage('p7')">← Back</button><button class="btn-bia" onclick="showPage('p9')">Next: Ask Your Data →</button></div>
+    </div>
+
+    <!-- PAGE 9: Ask Your Data -->
+    <div class="bia-page" id="page-p9">
+      <div class="bia-page-header"><div><div class="bia-badge">Step 9 · Conversational BI</div><h1 class="bia-page-title">Ask Your Data</h1><p class="bia-page-sub">Natural language interface — ask any question about your dataset.</p></div></div>
+      <div class="bia-card">
+        <div class="bia-card-title">💬 Conversational BI</div>
+        <div class="ask-messages" id="ask-messages"><div class="msg-ai"><div class="msg-ai-icon">🤖</div><div class="msg-ai-text">Hello! Ask me anything about your data — e.g. "What is the total revenue?", "Which category has highest sales?"</div></div></div>
+        <div class="ask-row">
+          <input class="ask-input" id="ask-input" placeholder="Ask a question about your data…" onkeydown="if(event.key==='Enter')sendAsk()">
+          <button class="btn-bia" onclick="sendAsk()">Send →</button>
+        </div>
+        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;">
+          <button class="btn-ghost" style="font-size:11px;padding:4px 9px;" onclick="quickAsk('What is the total revenue?')">Total revenue</button>
+          <button class="btn-ghost" style="font-size:11px;padding:4px 9px;" onclick="quickAsk('Which category has highest sales?')">Top category</button>
+          <button class="btn-ghost" style="font-size:11px;padding:4px 9px;" onclick="quickAsk('Summarize the dataset')">Summary</button>
+          <button class="btn-ghost" style="font-size:11px;padding:4px 9px;" onclick="quickAsk('Are there any outliers?')">Outliers</button>
+          <button class="btn-ghost" style="font-size:11px;padding:4px 9px;" onclick="quickAsk('What are the main trends?')">Trends</button>
+        </div>
+      </div>
+      <div class="bia-nav-row"><button class="btn-ghost" onclick="showPage('p8')">← Back</button><button class="btn-bia" onclick="showPage('p10')">Next: Real-Time →</button></div>
+    </div>
+
+    <!-- PAGE 10: Real-Time -->
+    <div class="bia-page" id="page-p10">
+      <div class="bia-page-header"><div><div class="bia-badge">Step 10 · Real-Time</div><h1 class="bia-page-title">Real-Time Analytics</h1><p class="bia-page-sub">Live KPI updates and auto-refresh dashboard.</p></div></div>
+      <div class="bia-card">
+        <div class="bia-card-title" style="display:flex;align-items:center;gap:7px;"><span class="rt-dot"></span>Live KPI Feed<span id="rt-status" style="font-size:11px;color:var(--text3);margin-left:auto;"></span></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:13px;">
+          <label style="font-size:13px;color:var(--text2);">Auto-refresh every:</label>
+          <select class="bia-select" id="rt-interval" style="width:130px;"><option value="5000">5 seconds</option><option value="15000" selected>15 seconds</option><option value="30000">30 seconds</option><option value="60000">1 minute</option></select>
+          <button class="btn-bia" onclick="startRealtime()" id="rt-start-btn">▶ Start</button>
+          <button class="btn-ghost" onclick="stopRealtime()" id="rt-stop-btn" style="display:none;">⏹ Stop</button>
+        </div>
+        <div class="kpi-grid" id="rt-kpi-cards"></div>
+        <div id="rt-last-refresh" style="margin-top:7px;font-size:11px;color:var(--text3);"></div>
+      </div>
+      <div class="bia-nav-row"><button class="btn-ghost" onclick="showPage('p9')">← Back</button><button class="btn-bia" onclick="showPage('p11')">Next: Export →</button></div>
+    </div>
+
+    <!-- PAGE 11: Export -->
+    <div class="bia-page" id="page-p11">
+      <div class="bia-page-header"><div><div class="bia-badge">Step 11 · Export</div><h1 class="bia-page-title">Export &amp; Reports</h1><p class="bia-page-sub">Download data, generate PDF reports, and export insights.</p></div></div>
+      <div class="dash-grid-2">
+        <div class="bia-card" style="text-align:center;" onclick="exportCSV()">
+          <div style="font-size:40px;margin-bottom:10px;">📥</div><div class="bia-card-title">Export Data as CSV</div>
+          <button class="btn-bia" style="margin-top:10px;width:100%;">Download CSV</button>
+        </div>
+        <div class="bia-card" style="text-align:center;" onclick="exportReport()">
+          <div style="font-size:40px;margin-bottom:10px;">📄</div><div class="bia-card-title">Generate BI Report</div>
+          <button class="btn-bia" style="margin-top:10px;width:100%;">Generate Report</button>
+        </div>
+      </div>
+      <div id="export-result" style="display:none;" class="bia-card"><div class="bia-card-title">✅ Export Ready</div><div id="export-msg"></div></div>
+      <div class="bia-nav-row"><button class="btn-ghost" onclick="showPage('p10')">← Back</button><button class="btn-bia" onclick="showPage('p12')">Next: Monitoring →</button></div>
+    </div>
+
+    <!-- PAGE 12: Monitoring -->
+    <div class="bia-page" id="page-p12">
+      <div class="bia-page-header"><div><div class="bia-badge">Step 12 · Monitoring</div><h1 class="bia-page-title">System Monitoring</h1><p class="bia-page-sub">Pipeline logs, system health, and performance metrics.</p></div><button class="btn-bia" onclick="loadMonitor()">🔄 Refresh</button></div>
+      <div class="dash-grid-3" id="health-cards" style="margin-bottom:16px;"></div>
+      <div class="bia-card"><div class="bia-card-title">📋 Event Log</div><div id="monitor-log-list"></div></div>
+      <div class="bia-nav-row"><button class="btn-ghost" onclick="showPage('p11')">← Back</button><a href="/" class="btn-bia" style="text-decoration:none;">🏠 Back to Home</a></div>
+    </div>
+
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const BS={filePath:null,columns:{all:[],num:[],cat:[]},kpiData:null,aggregations:{},rtInterval:null,charts:{},aggChart:null};
+const CLUSTER_COLORS=['#7c3aed','#0891b2','#059669','#d97706','#dc2626','#8b5cf6','#06b6d4','#34d399'];
+const NAV_IDS=['p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11','p12'];
+
+function showPage(id){
+  NAV_IDS.forEach(pid=>{document.getElementById('page-'+pid)?.classList.remove('active');document.getElementById('nav-'+pid)?.classList.remove('active');});
+  document.getElementById('page-'+id)?.classList.add('active');document.getElementById('nav-'+id)?.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(id==='p3'&&!BS.kpiData)loadKPIs();
+  if(id==='p4')loadEDA();
+  if(id==='p5')loadVizColumns();
+  if(id==='p6')loadDashboard();
+  if(id==='p7')loadAdvancedCols();
+  if(id==='p12')loadMonitor();
+}
+function markDone(pid){const nav=document.getElementById('nav-'+pid);if(nav){nav.classList.add('done');const num=document.getElementById('ns-'+pid);if(num)num.textContent='✓';}}
+
+/* ── Init ── */
+async function init(){
+  try{
+    const r=await fetch('/api/session-file');const d=await r.json();
+    if(d.file_path){
+      BS.filePath=d.file_path;const fname=d.file_path.split(/[\\/]/).pop();
+      document.getElementById('sb-file-name').textContent=fname;
+      document.getElementById('p1-file-info').style.display='block';
+      document.getElementById('p1-fname').textContent=fname;
+      document.getElementById('p1-no-file').style.display='none';
+      await runExtract(d.file_path);
+    }else{document.getElementById('p1-no-file').style.display='block';}
+  }catch(e){document.getElementById('p1-no-file').style.display='block';}
+}
+
+async function runExtract(fp){
+  setETL('etl-1','active');
+  try{
+    const r=await fetch('/api/bia/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:fp})});
+    const d=await r.json();if(d.error){setETL('etl-1','error');return;}
+    setETL('etl-1','done');setETL('etl-2','done');setETL('etl-3','done');setETL('etl-4','done');
+    document.getElementById('p1-fmeta').textContent=`${d.total_rows?.toLocaleString()} rows · ${d.columns?.length} columns · ${d.size_mb} MB`;
+    document.getElementById('p1-status').innerHTML='<span class="st-ok">✓ Connected</span>';
+    markDone('p1');await loadColumns();
+  }catch(e){setETL('etl-1','error');}
+}
+
+async function runETL(){
+  ['etl-1','etl-2','etl-3','etl-4'].forEach((id,i)=>setTimeout(()=>setETL(id,'done'),i*300));
+  await fetch('/api/bia/transform',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({drop_duplicates:true,fill_missing:'auto',normalize:false})});
+  markDone('p1');
+}
+
+function setETL(id,state){
+  const el=document.getElementById(id);if(!el)return;
+  el.className='etl-step'+(state==='done'?' done':state==='active'?' active':'');
+  el.querySelector('.etl-status').textContent=state==='done'?'✓ Done':state==='active'?'⚡ Running…':state==='error'?'✗ Error':'Waiting';
+}
+
+async function runTransform(){
+  try{
+    const r=await fetch('/api/bia/transform',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({drop_duplicates:document.getElementById('t-dedup').checked,fill_missing:document.getElementById('t-fill').value,normalize:document.getElementById('t-norm').checked})});
+    const d=await r.json();if(d.error){alert(d.error);return;}
+    document.getElementById('transform-result').style.display='block';
+    document.getElementById('transform-log').innerHTML=d.log.map(l=>`<div style="font-size:12px;margin-bottom:4px;color:var(--text2);">✓ ${l}</div>`).join('');
+    markDone('p2');
+  }catch(e){alert(e.message);}
+}
+
+/* ── KPIs ── */
+async function loadKPIs(){
+  document.getElementById('kpi-loading').style.display='flex';
+  try{
+    const r=await fetch('/api/bia/kpis',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const d=await r.json();document.getElementById('kpi-loading').style.display='none';if(d.error)return;
+    BS.kpiData=d;BS.aggregations=d.aggregations||{};
+    renderKPIs('kpi-cards',d.kpis);
+    if(Object.keys(BS.aggregations).length>0){document.getElementById('agg-card').style.display='block';showAgg('monthly');}
+    markDone('p3');
+  }catch(e){document.getElementById('kpi-loading').style.display='none';}
+}
+
+function showAgg(freq){
+  const data=BS.aggregations[freq];if(!data?.labels?.length)return;
+  if(BS.aggChart)BS.aggChart.destroy();
+  const ctx=document.getElementById('agg-chart').getContext('2d');
+  BS.aggChart=new Chart(ctx,{type:'line',data:{labels:data.labels,datasets:[{label:freq,data:data.values,borderColor:'#0891b2',backgroundColor:'rgba(8,145,178,.1)',fill:true,tension:.4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{maxTicksLimit:10}}}}});
+}
+
+/* ── EDA ── */
+async function loadEDA(){
+  document.getElementById('eda-loading').style.display='flex';document.getElementById('eda-overview').style.display='none';
+  try{
+    const r=await fetch('/api/bia/eda',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const d=await r.json();document.getElementById('eda-loading').style.display='none';if(d.error)return;
+    document.getElementById('eda-overview').style.display='block';
+    document.getElementById('eda-chips').innerHTML=[
+      `<span class="i-chip green">${d.n_rows?.toLocaleString()} rows</span>`,
+      `<span class="i-chip">${d.n_cols} columns</span>`,
+      `<span class="i-chip green">Completeness: ${d.completeness}%</span>`,
+      `<span class="i-chip amber">Missing: ${d.missing_total}</span>`].join('');
+    const tbody=document.getElementById('eda-stat-body');tbody.innerHTML='';
+    Object.entries(d.stats||{}).forEach(([col,s])=>{const tr=document.createElement('tr');tr.innerHTML=`<td style="font-weight:600;">${col}</td><td>${s.mean}</td><td>${s.median}</td><td>${s.std}</td><td>${s.min}</td><td>${s.max}</td><td>${s.outliers>0?`<span style="color:var(--danger);font-weight:700;">${s.outliers}</span>`:'0'}</td>`;tbody.appendChild(tr);});
+    if(d.correlation?.cols?.length>=2){
+      dc('eda-corr');const cols=d.correlation.cols,matrix=d.correlation.matrix,data2=[];
+      matrix.forEach((row,y)=>row.forEach((v,x)=>data2.push({x,y,v})));
+      const ctx=document.getElementById('eda-corr-chart').getContext('2d');
+      BS.charts['eda-corr']=new Chart(ctx,{type:'scatter',data:{datasets:[{data:data2.map(p=>({x:p.x,y:p.y})),backgroundColor:data2.map(p=>p.v>0.5?`rgba(8,145,178,${0.3+Math.abs(p.v)*.6})`:`rgba(140,140,160,0.2)`),pointRadius:16,pointStyle:'rect'}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{min:-.5,max:cols.length-.5,ticks:{callback:v=>cols[v]||'',stepSize:1}},y:{min:-.5,max:cols.length-.5,ticks:{callback:v=>cols[v]||'',stepSize:1}}}}});
+    }
+    markDone('p4');
+  }catch(e){document.getElementById('eda-loading').style.display='none';}
+}
+
+/* ── Viz builder ── */
+async function loadColumns(){
+  try{const r=await fetch('/api/bia/columns',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const d=await r.json();if(d.error)return;BS.columns={all:d.all_cols,num:d.num_cols,cat:d.cat_cols};}catch(e){}
+}
+async function loadVizColumns(){if(!BS.columns.all?.length)await loadColumns();populateSel('viz-x',[...BS.columns.cat,...BS.columns.all]);populateSel('viz-y',BS.columns.num);}
+
+async function buildVizChart(){
+  const type=document.getElementById('viz-type').value,xCol=document.getElementById('viz-x').value,yCol=document.getElementById('viz-y').value,agg=document.getElementById('viz-agg').value;
+  if(!xCol||!yCol){alert('Select X and Y columns.');return;}
+  try{
+    const r=await fetch('/api/bia/chart',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chart_type:type,x_col:xCol,y_col:yCol,agg_func:agg})});
+    const d=await r.json();if(d.error){alert(d.error);return;}
+    document.getElementById('viz-result').style.display='block';
+    document.getElementById('viz-chart-title').textContent=`${type}: ${yCol} by ${xCol}`;
+    dc('viz-chart');const ctx=document.getElementById('viz-chart').getContext('2d');
+    BS.charts['viz-chart']=new Chart(ctx,{type:type==='pie'?'doughnut':'bar',data:{labels:d.labels||[],datasets:[{label:agg,data:d.values||[],backgroundColor:CLUSTER_COLORS,borderRadius:5}]},options:{responsive:true,plugins:{legend:{display:type==='pie'}}}});
+    markDone('p5');
+  }catch(e){alert(e.message);}
+}
+
+/* ── Dashboard ── */
+async function loadDashboard(){
+  document.getElementById('dash-loading').style.display='flex';document.getElementById('dash-content').style.display='none';
+  try{
+    const r=await fetch('/api/bia/dashboard',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const d=await r.json();document.getElementById('dash-loading').style.display='none';if(d.error)return;
+    document.getElementById('dash-content').style.display='block';renderKPIs('dash-kpi-cards',d.kpis);
+    if(d.charts?.time_series){document.getElementById('dash-ts-wrap').style.display='block';dc('dash-ts');const ctx=document.getElementById('dash-ts-chart').getContext('2d');BS.charts['dash-ts']=new Chart(ctx,{type:'line',data:{labels:d.charts.time_series.labels,datasets:[{data:d.charts.time_series.values,borderColor:'#0891b2',backgroundColor:'rgba(8,145,178,.1)',fill:true,tension:.4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{maxTicksLimit:8}}}}});}
+    if(d.charts?.bar?.labels){document.getElementById('dash-bar-wrap').style.display='block';dc('dash-bar');const ctx=document.getElementById('dash-bar-chart').getContext('2d');BS.charts['dash-bar']=new Chart(ctx,{type:'bar',data:{labels:d.charts.bar.labels,datasets:[{data:d.charts.bar.values,backgroundColor:'rgba(124,58,237,.7)',borderRadius:5}]},options:{responsive:true,plugins:{legend:{display:false}}}});}
+    if(d.charts?.pie?.labels){document.getElementById('dash-pie-wrap').style.display='block';dc('dash-pie');const ctx=document.getElementById('dash-pie-chart').getContext('2d');BS.charts['dash-pie']=new Chart(ctx,{type:'doughnut',data:{labels:d.charts.pie.labels,datasets:[{data:d.charts.pie.values,backgroundColor:CLUSTER_COLORS}]},options:{responsive:true,plugins:{legend:{position:'right'}}}});}
+    if(d.charts?.histogram?.labels){document.getElementById('dash-hist-wrap').style.display='block';dc('dash-hist');const ctx=document.getElementById('dash-hist-chart').getContext('2d');BS.charts['dash-hist']=new Chart(ctx,{type:'bar',data:{labels:d.charts.histogram.labels,datasets:[{data:d.charts.histogram.values,backgroundColor:'rgba(5,150,105,.7)',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}}}});}
+    document.getElementById('dash-insights').innerHTML=(d.insights||[]).map(ins=>renderInsightCard(ins)).join('');
+    markDone('p6');
+  }catch(e){document.getElementById('dash-loading').style.display='none';}
+}
+
+/* ── Advanced Analytics ── */
+async function loadAdvancedCols(){
+  if(!BS.columns.all?.length)await loadColumns();
+  populateSel('anomaly-col',BS.columns.num||[]);
+  populateSel('fc-date-col',(BS.columns.all||[]).filter(c=>/date|time|month|year/.test(c.toLowerCase())));
+  populateSel('fc-val-col',BS.columns.num||[]);
+}
+
+async function runSegmentation(){
+  const k=parseInt(document.getElementById('cluster-k').value);
+  document.getElementById('seg-loading').style.display='flex';document.getElementById('seg-result').style.display='none';
+  try{
+    const r=await fetch('/api/bia/segment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({n_clusters:k})});
+    const d=await r.json();document.getElementById('seg-loading').style.display='none';
+    if(d.error){alert(d.error);return;}
+    document.getElementById('seg-result').style.display='block';
+    dc('seg');const ctx=document.getElementById('seg-scatter').getContext('2d');
+    const datasets=[];for(let i=0;i<k;i++){const indices=d.labels.map((l,j)=>l===i?j:-1).filter(j=>j>=0).slice(0,60);datasets.push({label:`Cluster ${i}`,data:indices.map(j=>({x:d.scatter_x[j],y:d.scatter_y[j]})),backgroundColor:CLUSTER_COLORS[i]+'99',pointRadius:5});}
+    BS.charts['seg']=new Chart(ctx,{type:'scatter',data:{datasets},options:{responsive:true,plugins:{legend:{position:'bottom'}}}});
+    document.getElementById('seg-summary').textContent=d.clusters.map(c=>`Cluster ${c.cluster}: ${c.size} rows (${c.pct}%)`).join('  ·  ');
+    markDone('p7');
+  }catch(e){document.getElementById('seg-loading').style.display='none';alert(e.message);}
+}
+
+async function runAnomalies(){
+  const col=document.getElementById('anomaly-col').value;if(!col){alert('Select a column');return;}
+  try{
+    const r=await fetch('/api/bia/anomalies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value_col:col})});
+    const d=await r.json();if(d.error){alert(d.error);return;}
+    document.getElementById('anomaly-result').style.display='block';
+    document.getElementById('anomaly-stats').innerHTML=`<span class="i-chip amber">Anomalies: ${d.total_anomalies} (${d.anomaly_pct}%)</span><span class="i-chip">Lower: ${d.lower_bound}</span><span class="i-chip">Upper: ${d.upper_bound}</span>`;
+    dc('anomaly');const ctx=document.getElementById('anomaly-chart').getContext('2d');
+    const normal=(d.normal_values||[]).slice(0,60).map((v,i)=>({x:i,y:v})),outliers=(d.anomaly_values||[]).slice(0,20).map((v,i)=>({x:60+i,y:v}));
+    BS.charts['anomaly']=new Chart(ctx,{type:'scatter',data:{datasets:[{label:'Normal',data:normal,backgroundColor:'rgba(5,150,105,.5)',pointRadius:4},{label:'Anomaly',data:outliers,backgroundColor:'rgba(220,38,38,.8)',pointRadius:6}]},options:{responsive:true,plugins:{legend:{position:'top'}}}});
+  }catch(e){alert(e.message);}
+}
+
+async function runForecast(){
+  const dateCo=document.getElementById('fc-date-col').value,valCol=document.getElementById('fc-val-col').value,periods=parseInt(document.getElementById('fc-periods').value);
+  if(!dateCo||!valCol){alert('Select date and value columns');return;}
+  try{
+    const r=await fetch('/api/bia/forecast',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date_col:dateCo,value_col:valCol,periods})});
+    const d=await r.json();if(d.error){alert(d.error);return;}
+    document.getElementById('fc-result').style.display='block';dc('fc');const ctx=document.getElementById('fc-chart').getContext('2d');
+    BS.charts['fc']=new Chart(ctx,{type:'line',data:{labels:[...d.history_dates,...d.forecast_dates],datasets:[{label:'Historical',data:[...d.history_values,...new Array(d.forecast_dates.length).fill(null)],borderColor:'#0891b2',backgroundColor:'rgba(8,145,178,.1)',fill:true,tension:.4},{label:'Forecast',data:[...new Array(d.history_dates.length).fill(null),...d.forecast_values],borderColor:'#d97706',borderDash:[6,3],tension:.4}]},options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{ticks:{maxTicksLimit:12}}}}});
+  }catch(e){alert(e.message);}
+}
+
+/* ── AI Insights ── */
+async function loadInsights(){
+  document.getElementById('insights-loading').style.display='flex';document.getElementById('insights-content').style.display='none';
+  try{
+    const r=await fetch('/api/bia/insights',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const d=await r.json();document.getElementById('insights-loading').style.display='none';if(d.error)return;
+    document.getElementById('insights-content').style.display='block';
+    document.getElementById('auto-insights-list').innerHTML=(d.insights||[]).map(ins=>renderInsightCard(ins)).join('');
+    if(d.ai_insight){document.getElementById('ai-insight-card').style.display='block';document.getElementById('ai-insight-text').textContent=d.ai_insight;}
+    markDone('p8');
+  }catch(e){document.getElementById('insights-loading').style.display='none';}
+}
+
+/* ── Ask Data ── */
+function quickAsk(q){document.getElementById('ask-input').value=q;sendAsk();}
+async function sendAsk(){
+  const input=document.getElementById('ask-input');const q=input.value.trim();if(!q)return;input.value='';
+  const msgs=document.getElementById('ask-messages');
+  msgs.innerHTML+=`<div class="msg-user"><span>${q}</span></div>`;
+  msgs.innerHTML+=`<div class="msg-ai" id="ask-thinking"><div class="msg-ai-icon">🤖</div><div class="msg-ai-text"><div class="bia-spin" style="width:14px;height:14px;border-width:2px;"></div></div></div>`;
+  msgs.scrollTop=msgs.scrollHeight;
+  try{
+    const r=await fetch('/api/bia/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
+    const d=await r.json();document.getElementById('ask-thinking')?.remove();
+    msgs.innerHTML+=`<div class="msg-ai"><div class="msg-ai-icon">🤖</div><div class="msg-ai-text">${d.answer||d.error||'No response.'}</div></div>`;
+    msgs.scrollTop=msgs.scrollHeight;
+  }catch(e){document.getElementById('ask-thinking')?.remove();msgs.innerHTML+=`<div class="msg-ai"><div class="msg-ai-icon">🤖</div><div class="msg-ai-text" style="color:var(--danger);">${e.message}</div></div>`;}
+}
+
+/* ── Real-Time ── */
+function startRealtime(){
+  const interval=parseInt(document.getElementById('rt-interval').value);
+  document.getElementById('rt-start-btn').style.display='none';document.getElementById('rt-stop-btn').style.display='inline-flex';document.getElementById('rt-status').textContent='🟢 Live';
+  refreshRT();BS.rtInterval=setInterval(refreshRT,interval);
+}
+function stopRealtime(){
+  clearInterval(BS.rtInterval);BS.rtInterval=null;
+  document.getElementById('rt-start-btn').style.display='inline-flex';document.getElementById('rt-stop-btn').style.display='none';document.getElementById('rt-status').textContent='Stopped';
+}
+async function refreshRT(){
+  try{const r=await fetch('/api/bia/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const d=await r.json();if(d.kpis)renderKPIs('rt-kpi-cards',d.kpis);document.getElementById('rt-last-refresh').textContent='Last refresh: '+new Date().toLocaleTimeString();}catch(e){}
+}
+
+/* ── Export ── */
+async function exportCSV(){try{const r=await fetch('/api/bia/export-csv',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const d=await r.json();document.getElementById('export-result').style.display='block';document.getElementById('export-msg').innerHTML=d.ok?`<span class="st-ok">✓ ${d.rows} rows exported.</span> <a href="${d.download_url}" target="_blank" style="color:var(--accent3);font-weight:700;">Download CSV</a>`:`<span class="st-err">✗ ${d.error}</span>`;}catch(e){}}
+async function exportReport(){try{const r=await fetch('/api/bia/export-report',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const d=await r.json();document.getElementById('export-result').style.display='block';document.getElementById('export-msg').innerHTML=d.ok?`<span class="st-ok">✓ Report generated.</span> <a href="${d.download_url}" target="_blank" style="color:var(--accent3);font-weight:700;">Download</a>${d.note?'<br><small style="color:var(--text3);">'+d.note+'</small>':''}`:`<span class="st-err">✗ ${d.error}</span>`;}catch(e){}}
+
+/* ── Monitoring ── */
+async function loadMonitor(){
+  try{
+    const r=await fetch('/api/bia/monitor');const d=await r.json();const h=d.health||{};
+    document.getElementById('health-cards').innerHTML=[{icon:'💾',label:'Disk Used',value:`${h.disk_used_gb}/${h.disk_total_gb} GB`,sub:`${h.disk_pct}% used`},{icon:'🗄️',label:'MySQL',value:h.mysql_available?'Available':'Not Installed',sub:''},{icon:'🤖',label:'ML Engine',value:h.sklearn_available?'Active':'Missing',sub:'scikit-learn'}].map(c=>`<div class="kpi-card"><div style="font-size:19px;">${c.icon}</div><div class="kpi-value" style="font-size:15px;">${c.value}</div><div class="kpi-label">${c.label}</div></div>`).join('');
+    const logEl=document.getElementById('monitor-log-list');if(!d.logs?.length){logEl.innerHTML='<div style="color:var(--text3);padding:10px;font-size:13px;">No events logged yet.</div>';return;}
+    logEl.innerHTML=d.logs.map(l=>`<div class="log-row"><span class="log-ts">${new Date(l.ts).toLocaleString()}</span><span class="log-type">${l.type||'event'}</span><span class="log-detail">${JSON.stringify(l).replace(/[{}"]/g,'').substring(0,100)}</span></div>`).join('');
+  }catch(e){}
+}
+
+/* ── Helpers ── */
+function renderKPIs(containerId,kpis){
+  const el=document.getElementById(containerId);if(!el)return;
+  const FMT={currency:v=>{const n=Number(v);if(n>=1e7)return '₹'+(n/1e7).toFixed(1)+'Cr';if(n>=1e5)return '₹'+(n/1e5).toFixed(1)+'L';return '₹'+n.toLocaleString('en-IN',{maximumFractionDigits:0});},percent:v=>v+'%',number:v=>Number(v).toLocaleString()};
+  const ICONS={total_value:'💰',avg_value:'📊',max_value:'🔝',min_value:'📉',growth_rate:'📈',total_records:'🗂️',total_rows:'🗂️',total_cols:'📋',total_qty:'📦',unique_categories:'🏷️',completeness:'✅',duplicates:'⚠️'};
+  el.innerHTML=Object.entries(kpis).map(([key,kpi])=>{const fmt=FMT[kpi.fmt]||(v=>v);const icon=kpi.icon||ICONS[key]||'📌';return `<div class="kpi-card"><div style="font-size:17px;margin-bottom:6px;">${icon}</div><div class="kpi-value">${fmt(kpi.value)}</div><div class="kpi-label">${kpi.label}</div></div>`;}).join('');
+}
+function renderInsightCard(ins){return `<div class="insight-card ${ins.severity||'info'}"><div class="insight-icon">${ins.icon||'💡'}</div><div><div class="insight-title">${ins.title}</div><div class="insight-body">${ins.body}</div></div></div>`;}
+function populateSel(id,options){const el=document.getElementById(id);if(!el)return;const cur=el.value;el.innerHTML=options.map(o=>`<option value="${o}">${o}</option>`).join('');if(options.includes(cur))el.value=cur;}
+function dc(key){if(BS.charts[key]){try{BS.charts[key].destroy();}catch(e){}delete BS.charts[key];}}
+
+init();
+</script>
+{% endblock %}

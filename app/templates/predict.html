@@ -1,0 +1,2175 @@
+{% extends "base.html" %}
+{% block title %}Predictive Modeling — Grivora AI{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ============================================================
+   GRIVORA AI — PREDICTIVE MODELING (Production Workflow)
+   Layout: persistent left sidebar + 5-stage workflow main area
+   ============================================================ */
+
+:root {
+  --pma-radius: 14px;
+  --pma-gap: 16px;
+  --pma-sidebar-w: 320px;
+}
+
+/* ─────────────────────────────────────────────
+   ROOT LAYOUT — sidebar + main
+   ───────────────────────────────────────────── */
+.pma-shell {
+  display: grid;
+  grid-template-columns: var(--pma-sidebar-w) 1fr;
+  gap: 0;
+  min-height: calc(100vh - 80px);
+  background: var(--bg);
+}
+@media (max-width: 980px) {
+  .pma-shell { grid-template-columns: 1fr; }
+  .pma-sidebar { display: none; }
+  .pma-sidebar.open { display: flex; position: fixed; inset: 64px 0 0 0; z-index: 50; width: 100%; }
+}
+
+/* ─────────────────────────────────────────────
+   SIDEBAR
+   ───────────────────────────────────────────── */
+.pma-sidebar {
+  display: flex; flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+  position: sticky; top: 64px; height: calc(100vh - 64px);
+}
+.sb-head {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.sb-title {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 15px; font-weight: 800; color: var(--text);
+  letter-spacing: -0.01em;
+  display: flex; align-items: center; gap: 8px;
+}
+.sb-title-counter {
+  margin-left: auto;
+  font-size: 11px; padding: 2px 8px; border-radius: 99px;
+  background: var(--surface2); color: var(--text2); font-weight: 700;
+}
+.sb-summary {
+  display: flex; gap: 10px; margin-top: 12px;
+  font-size: 11px; color: var(--text3);
+}
+.sb-summary div { flex: 1; }
+.sb-summary strong {
+  display: block; font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 18px; color: var(--text); font-weight: 800; margin-bottom: 2px;
+}
+
+.sb-search {
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+}
+.sb-search input {
+  width: 100%; padding: 8px 12px; border-radius: 8px;
+  border: 1.5px solid var(--border2); background: var(--bg);
+  color: var(--text); font-size: 13px;
+}
+.sb-search input:focus { outline: none; border-color: var(--accent2); }
+
+.sb-filters {
+  display: flex; gap: 6px; padding: 0 16px 12px;
+  border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.sb-filter {
+  font-size: 11px; padding: 4px 10px; border-radius: 99px;
+  background: var(--surface2); color: var(--text2); cursor: pointer;
+  border: 1px solid transparent; font-weight: 600;
+}
+.sb-filter.active {
+  background: var(--accent2); color: #fff;
+}
+
+.sb-list {
+  flex: 1; overflow-y: auto; padding: 8px;
+}
+.sb-empty {
+  padding: 32px 20px; text-align: center; color: var(--text3); font-size: 12.5px;
+  line-height: 1.6;
+}
+.sb-empty .icon { font-size: 32px; margin-bottom: 10px; opacity: .5; }
+
+.exp-row {
+  display: grid; grid-template-columns: auto 1fr auto;
+  gap: 10px; align-items: flex-start;
+  padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  margin-bottom: 4px;
+  transition: background .12s, border-color .12s;
+  border: 1px solid transparent;
+}
+.exp-row:hover { background: var(--surface2); }
+.exp-row.active {
+  background: rgba(124,58,237,.08); border-color: rgba(124,58,237,.25);
+}
+.exp-row.in-basket {
+  background: rgba(5,150,105,.06); border-color: rgba(5,150,105,.3);
+}
+.exp-checkbox {
+  width: 16px; height: 16px; margin-top: 3px;
+  cursor: pointer; accent-color: var(--success);
+}
+.exp-body { min-width: 0; }
+.exp-row .exp-name {
+  font-size: 13px; font-weight: 700; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.exp-row .exp-meta {
+  font-size: 11px; color: var(--text3); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.exp-row .exp-score {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 13px; font-weight: 800; color: var(--text);
+}
+.exp-row .exp-score-label {
+  font-size: 9px; color: var(--text3); font-weight: 600;
+  text-transform: uppercase; text-align: right;
+}
+.exp-actions {
+  display: flex; flex-direction: column; gap: 4px; align-items: flex-end;
+}
+.star-btn {
+  background: none; border: none; cursor: pointer; padding: 0;
+  font-size: 14px; color: #cbd5e1; transition: color .12s, transform .15s;
+}
+.star-btn.starred { color: #f59e0b; }
+.star-btn:hover { transform: scale(1.2); }
+
+/* Compare basket footer */
+.sb-basket {
+  border-top: 1px solid var(--border); padding: 12px 16px;
+  background: rgba(5,150,105,.04);
+}
+.sb-basket.hidden { display: none; }
+.sb-basket-head {
+  font-size: 11px; font-weight: 700; color: var(--success);
+  text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px;
+}
+.sb-basket-body { font-size: 12px; color: var(--text2); margin-bottom: 10px; line-height: 1.5; }
+.sb-basket-actions { display: flex; gap: 8px; }
+.btn-compare {
+  flex: 1; padding: 8px 12px; background: var(--success); color: #fff;
+  border: none; border-radius: 8px; font-size: 12.5px; font-weight: 700;
+  cursor: pointer; transition: opacity .12s;
+}
+.btn-compare:hover { opacity: .88; }
+.btn-clear-basket {
+  padding: 8px 10px; background: transparent; color: var(--text3);
+  border: 1px solid var(--border2); border-radius: 8px; cursor: pointer;
+  font-size: 12px;
+}
+
+/* ─────────────────────────────────────────────
+   MAIN AREA
+   ───────────────────────────────────────────── */
+.pma-main {
+  padding: 28px 36px 80px;
+  max-width: 1180px; margin: 0 auto; width: 100%;
+}
+@media (max-width: 768px) { .pma-main { padding: 16px; } }
+
+.pma-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  flex-wrap: wrap; gap: 14px; margin-bottom: 28px;
+  padding-bottom: 20px; border-bottom: 1px solid var(--border);
+}
+.pma-title-block .h1 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 26px; font-weight: 900; letter-spacing: -.03em;
+  margin: 0 0 4px; color: var(--text);
+}
+.pma-title-block .sub {
+  color: var(--text2); font-size: 13.5px; max-width: 600px; line-height: 1.6;
+}
+.pma-header-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.meta-chip {
+  font-size: 11px; font-weight: 600; padding: 3px 11px; border-radius: 99px;
+  background: var(--surface2); color: var(--text3); border: 1px solid var(--border);
+}
+
+/* ─────────────────────────────────────────────
+   PIPELINE BREADCRUMB
+   ───────────────────────────────────────────── */
+.pma-pipeline {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 4px; margin-bottom: 26px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 6px;
+}
+.pipe-step {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border-radius: 8px; cursor: pointer;
+  transition: background .12s; position: relative;
+}
+.pipe-step:not(:last-child)::after {
+  content: '›'; position: absolute; right: -8px; top: 50%;
+  transform: translateY(-50%); font-size: 18px; color: var(--text3);
+  font-weight: 300;
+}
+.pipe-step:hover:not(.disabled) { background: var(--surface2); }
+.pipe-step.disabled { cursor: not-allowed; opacity: .35; }
+.pipe-step.active { background: rgba(124,58,237,.1); }
+.pipe-step.complete .pipe-num {
+  background: var(--success); color: #fff;
+}
+.pipe-step.active .pipe-num {
+  background: var(--accent2); color: #fff;
+  box-shadow: 0 0 0 4px rgba(124,58,237,.15);
+}
+.pipe-num {
+  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  background: var(--surface2); color: var(--text2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 13px; font-weight: 800;
+  transition: all .15s;
+}
+.pipe-info { min-width: 0; flex: 1; }
+.pipe-label {
+  font-size: 9px; color: var(--text3); font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+}
+.pipe-name {
+  font-size: 13px; font-weight: 700; color: var(--text);
+  margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pipe-step.complete .pipe-name { color: var(--text); }
+.pipe-step.disabled .pipe-name { color: var(--text3); }
+@media (max-width: 880px) {
+  .pma-pipeline { grid-template-columns: 1fr 1fr; }
+  .pipe-step::after { display: none; }
+  .pipe-name { font-size: 12px; }
+}
+
+/* ─────────────────────────────────────────────
+   STAGE PANELS
+   ───────────────────────────────────────────── */
+.stage { display: none; animation: stageIn .22s ease; }
+.stage.active { display: block; }
+@keyframes stageIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.stage-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 26px 30px; margin-bottom: 18px;
+}
+.stage-card h2 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 18px; font-weight: 800; margin: 0 0 4px; color: var(--text);
+  letter-spacing: -0.01em;
+}
+.stage-card .lead {
+  font-size: 13.5px; color: var(--text2); line-height: 1.6; margin-bottom: 22px;
+}
+
+.stage-actions {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; flex-wrap: wrap; margin-top: 22px;
+  padding-top: 18px; border-top: 1px solid var(--border);
+}
+.btn-back {
+  padding: 10px 16px; background: transparent; color: var(--text2);
+  border: 1px solid var(--border2); border-radius: 8px; font-size: 13px;
+  font-weight: 600; cursor: pointer; transition: all .12s;
+}
+.btn-back:hover { background: var(--surface2); color: var(--text); }
+.btn-next {
+  padding: 12px 22px; background: var(--accent2); color: #fff;
+  border: none; border-radius: 8px; font-size: 13.5px; font-weight: 700;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  transition: opacity .12s;
+}
+.btn-next:hover { opacity: .88; }
+.btn-next:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ─────────────────────────────────────────────
+   STAGE 1: DATASET PROFILE
+   ───────────────────────────────────────────── */
+.profile-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px; margin-bottom: 18px;
+}
+.profile-tile {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+}
+.profile-tile .v {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 22px; font-weight: 900; color: var(--text); line-height: 1.2;
+}
+.profile-tile .l {
+  font-size: 10.5px; color: var(--text3); text-transform: uppercase;
+  letter-spacing: .07em; font-weight: 700; margin-top: 4px;
+}
+
+.col-types-bar {
+  display: flex; height: 28px; border-radius: 8px;
+  overflow: hidden; margin: 18px 0;
+  font-size: 11px; font-weight: 700; color: #fff;
+}
+.col-types-seg {
+  display: flex; align-items: center; justify-content: center;
+  min-width: 60px; transition: filter .15s;
+}
+.col-types-seg:hover { filter: brightness(1.1); }
+.seg-numeric    { background: linear-gradient(135deg,#2563eb,#7c3aed); }
+.seg-categorical{ background: linear-gradient(135deg,#7c3aed,#a78bfa); }
+.seg-date       { background: linear-gradient(135deg,#0891b2,#06b6d4); }
+.seg-text       { background: linear-gradient(135deg,#059669,#10b981); }
+
+.warn-banner {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: rgba(217,119,6,.08); border-left: 3px solid var(--warning);
+  padding: 12px 16px; border-radius: 0 10px 10px 0;
+  font-size: 12.5px; line-height: 1.55; color: var(--text);
+  margin: 14px 0;
+}
+.warn-banner.info  { background: rgba(37,99,235,.07); border-color: var(--accent); }
+.warn-banner.ok    { background: rgba(5,150,105,.07); border-color: var(--success); }
+.warn-banner .ic { font-size: 16px; flex-shrink: 0; }
+
+/* ─────────────────────────────────────────────
+   STAGE 2: TARGET PICKER
+   ───────────────────────────────────────────── */
+.target-row {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 16px; align-items: end;
+}
+@media (max-width: 640px) { .target-row { grid-template-columns: 1fr; } }
+.label-block {
+  font-size: 11px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text3); margin-bottom: 6px;
+}
+.target-select {
+  width: 100%; padding: 12px 14px; border-radius: 10px;
+  border: 1.5px solid var(--border2); background: var(--bg);
+  color: var(--text); font-size: 14px; font-weight: 500;
+}
+.target-select:focus { outline: none; border-color: var(--accent2); }
+
+.target-detection {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 18px; margin-top: 16px;
+  display: none;
+}
+.target-detection.shown { display: block; }
+.detection-line {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: 13px; color: var(--text);
+}
+.task-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 14px; border-radius: 99px; font-size: 12.5px; font-weight: 700;
+  background: linear-gradient(135deg, rgba(124,58,237,.12), rgba(37,99,235,.08));
+  color: var(--accent2); border: 1px solid rgba(124,58,237,.2);
+}
+.detection-reason {
+  font-size: 12px; color: var(--text3); margin-top: 8px; line-height: 1.55;
+}
+
+/* ─────────────────────────────────────────────
+   STAGE 3: STRATEGY
+   ───────────────────────────────────────────── */
+.recommendation-banner {
+  background: linear-gradient(135deg, rgba(124,58,237,.06), rgba(5,150,105,.04));
+  border: 1px solid rgba(124,58,237,.18);
+  border-radius: 12px; padding: 16px 20px; margin-bottom: 22px;
+  font-size: 13px; line-height: 1.55; color: var(--text);
+}
+.recommendation-banner b { color: var(--accent2); }
+
+.strategy-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+}
+@media (max-width: 880px) { .strategy-grid { grid-template-columns: 1fr; } }
+.strategy-card {
+  background: var(--bg); border: 2px solid var(--border);
+  border-radius: 14px; padding: 20px 22px; cursor: pointer;
+  transition: all .18s; position: relative;
+}
+.strategy-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.strategy-card.selected {
+  border-color: var(--accent2);
+  box-shadow: 0 8px 28px rgba(124,58,237,.14);
+}
+.strategy-card .sc-top {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.strategy-card .sc-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+}
+.sc-auto    .sc-icon { background: rgba(124,58,237,.12); }
+.sc-manual  .sc-icon { background: rgba(37,99,235,.12); }
+.sc-automl  .sc-icon { background: rgba(5,150,105,.12); }
+.strategy-card .sc-pick {
+  font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 99px;
+  background: rgba(124,58,237,.12); color: var(--accent2);
+  display: none;
+}
+.strategy-card.recommended .sc-pick { display: inline-block; }
+.strategy-card h3 {
+  margin: 0 0 5px; font-size: 15px; font-weight: 800; color: var(--text);
+}
+.strategy-card .sc-desc {
+  font-size: 12.5px; color: var(--text2); line-height: 1.55;
+}
+
+/* ─────────────────────────────────────────────
+   SUGGEST RESULTS
+   ───────────────────────────────────────────── */
+.suggest-list { display: grid; gap: 12px; margin-top: 18px; }
+.suggest-card {
+  background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 16px 20px;
+  display: grid; grid-template-columns: auto 1fr auto;
+  gap: 16px; align-items: center;
+}
+@media (max-width: 640px) {
+  .suggest-card { grid-template-columns: auto 1fr; }
+  .suggest-card .sc-action { grid-column: 1 / -1; margin-top: 6px; }
+}
+.suggest-card .rank-badge {
+  width: 34px; height: 34px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 16px; font-weight: 900; color: #fff; flex-shrink: 0;
+}
+.rank-badge.r1 { background: linear-gradient(135deg, #d97706, #f59e0b); box-shadow: 0 3px 10px rgba(217,119,6,.3); }
+.rank-badge.r2 { background: linear-gradient(135deg, #64748b, #94a3b8); }
+.rank-badge.r3 { background: linear-gradient(135deg, #b45309, #d97706); }
+.rank-badge.r4, .rank-badge.r5 { background: var(--surface2); color: var(--text2); }
+.suggest-card .sc-name {
+  font-size: 14.5px; font-weight: 800; color: var(--text);
+  display: flex; align-items: center; gap: 8px;
+}
+.fam-tag {
+  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px;
+  background: var(--surface2); color: var(--text3);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.suggest-card .sc-rationale {
+  font-size: 12.5px; color: var(--text2); margin-top: 4px; line-height: 1.5;
+}
+.suggest-card .sc-tags {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;
+}
+.tag-chip {
+  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 5px;
+  background: var(--surface2); color: var(--text3);
+}
+.tag-chip.fast   { background: rgba(5,150,105,.12); color: var(--success); }
+.tag-chip.slow   { background: rgba(217,119,6,.12); color: var(--warning); }
+.tag-chip.interp { background: rgba(37,99,235,.12); color: var(--accent); }
+.btn-train {
+  padding: 9px 16px; background: var(--accent2); color: #fff;
+  border: none; border-radius: 8px; font-size: 12.5px; font-weight: 700;
+  cursor: pointer; white-space: nowrap; transition: opacity .12s;
+}
+.btn-train:hover { opacity: .87; }
+
+/* ─────────────────────────────────────────────
+   MANUAL CATALOG
+   ───────────────────────────────────────────── */
+.catalog-toolbar {
+  display: flex; justify-content: space-between; gap: 12px;
+  margin: 16px 0; flex-wrap: wrap; align-items: center;
+}
+.search-box {
+  padding: 9px 14px; border-radius: 9px; border: 1.5px solid var(--border2);
+  background: var(--bg); color: var(--text); font-size: 13px;
+  flex: 1; max-width: 360px; min-width: 200px;
+}
+.search-box:focus { outline: none; border-color: var(--accent2); }
+.family-group { margin-bottom: 22px; }
+.family-header {
+  font-size: 11px; font-weight: 700; color: var(--text3);
+  letter-spacing: .07em; text-transform: uppercase; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.family-header::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.algo-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;
+}
+.algo-card {
+  background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: 10px; padding: 13px 15px; cursor: pointer;
+  transition: all .12s;
+}
+.algo-card:hover { border-color: var(--accent2); transform: translateY(-1px); }
+.algo-card .an {
+  font-size: 13.5px; font-weight: 800; color: var(--text); margin-bottom: 4px;
+}
+.algo-card .at {
+  font-size: 11.5px; color: var(--text2); line-height: 1.45;
+}
+.algo-card .tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 7px; }
+
+/* ─────────────────────────────────────────────
+   STAGE 4: TRAINING CONSOLE
+   ───────────────────────────────────────────── */
+.train-status {
+  display: flex; gap: 14px; align-items: center; margin-bottom: 18px;
+  padding: 14px 18px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 10px;
+}
+.spinner-mini {
+  width: 22px; height: 22px; border: 3px solid var(--border);
+  border-top-color: var(--accent2); border-radius: 50%;
+  animation: spin .7s linear infinite; flex-shrink: 0;
+}
+.spinner-mini.done {
+  border-color: var(--success); border-top-color: var(--success);
+  animation: none;
+}
+.spinner-mini.done::after {
+  content: '✓'; color: var(--success); display: block; font-size: 14px;
+  text-align: center; line-height: 16px; font-weight: 900;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.train-status-text { font-size: 13.5px; color: var(--text); flex: 1; }
+.train-status-text strong { font-weight: 800; }
+
+.train-console {
+  background: #0f172a; color: #cbd5e1;
+  border-radius: 10px; padding: 14px 18px; margin-bottom: 18px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px; line-height: 1.7;
+  height: 260px; overflow-y: auto;
+}
+.train-console .log-line {
+  padding: 1px 0;
+}
+.train-console .log-line.info     { color: #cbd5e1; }
+.train-console .log-line.success  { color: #34d399; }
+.train-console .log-line.warn     { color: #fbbf24; }
+.train-console .log-line.error    { color: #f87171; }
+.train-console .log-line .ts      { color: #64748b; margin-right: 8px; }
+
+/* Auto-ML leaderboard */
+.leaderboard-table {
+  width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 16px;
+}
+.leaderboard-table th {
+  text-align: left; padding: 10px 12px; font-size: 10px; font-weight: 800;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--text3);
+  background: var(--surface2); border-bottom: 1px solid var(--border);
+}
+.leaderboard-table td {
+  padding: 14px 12px; border-bottom: 1px solid var(--border);
+}
+.leaderboard-table tr:last-child td { border-bottom: none; }
+.leaderboard-table tr.winner td { background: rgba(5,150,105,.05); }
+.rank-medal {
+  width: 26px; height: 26px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 13px; font-weight: 900;
+}
+.rank-medal.m1 { background: linear-gradient(135deg, #d97706, #f59e0b); }
+.rank-medal.m2 { background: linear-gradient(135deg, #64748b, #94a3b8); }
+.rank-medal.m3 { background: linear-gradient(135deg, #b45309, #d97706); }
+.rank-medal.mx { background: var(--surface2); color: var(--text2); }
+
+.lb-running {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
+  color: var(--text3);
+}
+.lb-running::before {
+  content: ''; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent2);
+  animation: pulse .9s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+
+/* ─────────────────────────────────────────────
+   STAGE 5: MODEL CARD
+   ───────────────────────────────────────────── */
+.card-section { margin-bottom: 22px; }
+.card-section h4 {
+  font-size: 11.5px; font-weight: 800; color: var(--text3);
+  letter-spacing: .08em; text-transform: uppercase;
+  margin: 0 0 12px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.metric-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.metric-tile {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px; text-align: center;
+  position: relative; overflow: hidden;
+}
+.metric-tile::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent2), var(--success));
+}
+.metric-tile.primary {
+  background: linear-gradient(135deg, rgba(124,58,237,.06), rgba(5,150,105,.04));
+  border-color: rgba(124,58,237,.25);
+}
+.metric-tile.primary::before {
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  height: 3px;
+}
+.metric-tile .v {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 22px; font-weight: 900; color: var(--text); line-height: 1.2;
+  margin-bottom: 3px;
+}
+.metric-tile .l {
+  font-size: 10px; color: var(--text3); text-transform: uppercase;
+  letter-spacing: .07em; font-weight: 700;
+}
+
+.cv-banner {
+  background: rgba(37,99,235,.06); border-left: 3px solid var(--accent);
+  padding: 13px 16px; border-radius: 0 10px 10px 0;
+  font-size: 12.5px; line-height: 1.6; color: var(--text); margin-top: 12px;
+}
+.cv-banner b { color: var(--accent); }
+
+/* Hyperparameters table */
+.params-table {
+  width: 100%; border-collapse: collapse; font-size: 12.5px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden;
+}
+.params-table th, .params-table td { padding: 9px 14px; text-align: left; }
+.params-table th {
+  background: var(--surface2); font-size: 10px; font-weight: 800;
+  color: var(--text3); text-transform: uppercase; letter-spacing: .06em;
+}
+.params-table tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+.params-table .k { color: var(--text2); font-weight: 600; width: 220px; }
+.params-table .v { color: var(--text); font-family: 'JetBrains Mono', monospace; }
+
+/* Feature importance bars */
+.feat-row {
+  display: grid; grid-template-columns: 200px 1fr 60px;
+  gap: 10px; align-items: center; margin-bottom: 6px;
+}
+.feat-name {
+  font-size: 12.5px; font-weight: 600; color: var(--text2);
+  text-align: right;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.feat-bar {
+  height: 9px; border-radius: 99px; background: var(--border);
+  overflow: hidden;
+}
+.feat-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent2), var(--success));
+  transition: width .4s ease;
+}
+.feat-val {
+  font-size: 11px; color: var(--text3); font-variant-numeric: tabular-nums;
+}
+
+/* Charts side-by-side */
+.charts-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+}
+@media (max-width: 768px) { .charts-row { grid-template-columns: 1fr; } }
+.chart-frame {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 18px;
+}
+.chart-frame .l {
+  font-size: 11px; font-weight: 800; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px;
+}
+
+/* Confusion Matrix Heatmap */
+.cm-wrap {
+  overflow-x: auto; margin: 8px 0;
+}
+.cm-grid {
+  display: inline-grid; gap: 2px;
+  font-size: 12px;
+}
+.cm-header {
+  font-size: 10px; font-weight: 800; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .05em;
+  display: flex; align-items: center; justify-content: center;
+  padding: 4px 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cm-cell {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-width: 54px; min-height: 50px;
+  border-radius: 6px; padding: 6px 4px;
+  transition: transform .1s;
+  position: relative;
+}
+.cm-cell:hover { transform: scale(1.06); z-index: 2; }
+.cm-cell .cm-count {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 15px; font-weight: 900; line-height: 1.1;
+}
+.cm-cell .cm-pct {
+  font-size: 9px; font-weight: 600; opacity: .85; margin-top: 2px;
+}
+.cm-axis-label {
+  font-size: 11px; font-weight: 700; color: var(--text2);
+  text-align: center; margin: 8px 0 4px;
+}
+.cm-legend {
+  display: flex; gap: 14px; margin-top: 10px;
+  font-size: 10.5px; color: var(--text3);
+}
+.cm-legend-dot {
+  width: 10px; height: 10px; border-radius: 3px; display: inline-block;
+  margin-right: 4px; vertical-align: middle;
+}
+
+/* Card actions row */
+.card-actions {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border);
+}
+.btn-action {
+  padding: 9px 16px; border: 1px solid var(--border2); border-radius: 8px;
+  background: transparent; color: var(--text); font-size: 12.5px;
+  font-weight: 700; cursor: pointer; transition: all .12s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-action:hover { background: var(--surface2); }
+.btn-action.primary {
+  background: var(--accent2); color: #fff; border-color: var(--accent2);
+}
+.btn-action.primary:hover { background: var(--accent2); opacity: .88; }
+.btn-action.success {
+  background: var(--success); color: #fff; border-color: var(--success);
+}
+.btn-action.success:hover { opacity: .88; }
+.btn-action.danger {
+  color: var(--danger); border-color: rgba(220,38,38,.3);
+}
+.btn-action.danger:hover { background: rgba(220,38,38,.08); }
+
+/* Deploy panel */
+.deploy-panel {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px 22px; margin-top: 14px;
+}
+.deploy-form {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px; margin-bottom: 14px;
+}
+.deploy-field label {
+  display: block; font-size: 10px; font-weight: 700; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px;
+}
+.deploy-field input {
+  width: 100%; padding: 8px 12px; border-radius: 7px;
+  border: 1px solid var(--border2); background: var(--surface);
+  color: var(--text); font-size: 13px;
+}
+.deploy-field input:focus { outline: none; border-color: var(--accent2); }
+.deploy-result {
+  background: rgba(5,150,105,.08); border-left: 3px solid var(--success);
+  padding: 14px 18px; border-radius: 0 10px 10px 0; margin-top: 10px;
+  display: none;
+}
+.deploy-result.shown { display: block; }
+.deploy-result-label {
+  font-size: 10px; font-weight: 800; color: var(--success);
+  letter-spacing: .07em; text-transform: uppercase; margin-bottom: 6px;
+}
+.deploy-result-value {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 26px; font-weight: 900; color: var(--text); line-height: 1.1;
+}
+.deploy-confidence {
+  font-size: 12px; color: var(--text3); margin-top: 6px;
+}
+
+/* AI insight box */
+.ai-box {
+  background: linear-gradient(135deg, rgba(124,58,237,.07), rgba(37,99,235,.04));
+  border-left: 3px solid var(--accent2);
+  padding: 14px 18px; border-radius: 0 10px 10px 0;
+  font-size: 13px; line-height: 1.65; color: var(--text);
+}
+.ai-box .ai-tag {
+  font-size: 10px; font-weight: 800; color: var(--accent2);
+  letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px;
+}
+
+/* ─────────────────────────────────────────────
+   COMPARE VIEW
+   ───────────────────────────────────────────── */
+.compare-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.compare-col {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px 18px;
+}
+.compare-col.winner { border-color: var(--success); box-shadow: 0 4px 18px rgba(5,150,105,.1); }
+.compare-col h4 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  margin: 0 0 6px; font-size: 15px; font-weight: 800;
+  display: flex; align-items: center; gap: 6px;
+}
+.compare-col .col-meta {
+  font-size: 11px; color: var(--text3); margin-bottom: 14px;
+}
+.compare-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12.5px; padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.compare-row .k { color: var(--text2); font-weight: 600; }
+.compare-row .v { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.compare-row.best .v { color: var(--success); }
+
+/* Loading overlay */
+.full-loader {
+  position: fixed; inset: 0; background: rgba(255,255,255,.85);
+  backdrop-filter: blur(6px); z-index: 9000;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+}
+.full-loader.shown { display: flex; }
+.full-loader .spinner {
+  width: 48px; height: 48px; border: 4px solid var(--border);
+  border-top-color: var(--accent2); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+.full-loader .msg {
+  margin-top: 16px; font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 16px; font-weight: 700; color: var(--text);
+}
+.full-loader .sub { margin-top: 4px; font-size: 12.5px; color: var(--text3); }
+
+/* No upload state */
+.no-upload {
+  text-align: center; padding: 56px 32px;
+  background: var(--surface); border: 2px dashed var(--border);
+  border-radius: 16px; color: var(--text2);
+}
+.no-upload a { color: var(--accent2); font-weight: 700; text-decoration: none; }
+
+/* Sidebar mobile toggle */
+.sidebar-toggle {
+  display: none; position: fixed; top: 80px; right: 16px; z-index: 60;
+  background: var(--accent2); color: #fff; border: none;
+  width: 44px; height: 44px; border-radius: 50%; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(124,58,237,.3); font-size: 18px;
+}
+@media (max-width: 980px) { .sidebar-toggle { display: block; } }
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ============================================================
+   FULL LOADER OVERLAY
+============================================================ -->
+<div class="full-loader" id="full-loader">
+  <div class="spinner"></div>
+  <div class="msg" id="loader-msg">Working…</div>
+  <div class="sub" id="loader-sub"></div>
+</div>
+
+<!-- Mobile sidebar toggle -->
+<button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+
+<!-- ============================================================
+   APP SHELL
+============================================================ -->
+<div class="pma-shell">
+
+  <!-- ─────── SIDEBAR ─────── -->
+  <aside class="pma-sidebar" id="pma-sidebar">
+    <div class="sb-head">
+      <div class="sb-title">
+        🧪 Experiments
+        <span class="sb-title-counter" id="sb-counter">0</span>
+      </div>
+      <div class="sb-summary" id="sb-summary">
+        <div><strong id="sb-total">0</strong>total</div>
+        <div><strong id="sb-starred">0</strong>starred</div>
+        <div><strong id="sb-best">—</strong>best</div>
+      </div>
+    </div>
+    <div class="sb-search">
+      <input type="text" placeholder="Search dataset, algorithm..." id="sb-search-input" oninput="onSearchChange()" />
+    </div>
+    <div class="sb-filters">
+      <span class="sb-filter active" data-filter="all" onclick="setFilter('all')">All</span>
+      <span class="sb-filter" data-filter="starred" onclick="setFilter('starred')">★ Starred</span>
+      <span class="sb-filter" data-filter="classification" onclick="setFilter('classification')">Class</span>
+      <span class="sb-filter" data-filter="regression" onclick="setFilter('regression')">Reg</span>
+    </div>
+    <div class="sb-list" id="sb-list">
+      <div class="sb-empty"><div class="icon">🧪</div>No experiments yet.<br>Train your first model →</div>
+    </div>
+    <div class="sb-basket hidden" id="sb-basket">
+      <div class="sb-basket-head" id="basket-head">0 selected for compare</div>
+      <div class="sb-basket-body">Pick 2 or more checkboxes to compare side by side.</div>
+      <div class="sb-basket-actions">
+        <button class="btn-compare" onclick="openCompare()">Compare →</button>
+        <button class="btn-clear-basket" onclick="clearBasket()">Clear</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ─────── MAIN ─────── -->
+  <main class="pma-main">
+
+    <!-- HEADER -->
+    <div class="pma-header">
+      <div class="pma-title-block">
+        <div class="h1">Predictive Modeling</div>
+        <div class="sub">
+          Train ML models on your dataset. AI auto-suggests the best algorithm,
+          or pick one yourself, or run Auto-ML to compare the top 5 in parallel.
+        </div>
+      </div>
+      <div class="pma-header-meta" id="header-meta"></div>
+    </div>
+
+    <!-- NO UPLOAD STATE -->
+    <div class="no-upload" id="no-upload" style="display:none;">
+      <div style="font-size:42px;margin-bottom:12px;">📂</div>
+      <div style="font-weight:700;color:var(--text);margin-bottom:6px;">No dataset loaded</div>
+      <div style="font-size:13px;margin-bottom:14px;">Upload a CSV or Excel file first.</div>
+      <a href="/upload?next=predict">Go to Upload →</a>
+    </div>
+
+    <!-- WORKFLOW -->
+    <div id="workflow" style="display:none;">
+
+      <!-- PIPELINE BREADCRUMB -->
+      <div class="pma-pipeline" id="pipeline">
+        <div class="pipe-step active" data-stage="1" onclick="goToStage(1)">
+          <div class="pipe-num">1</div>
+          <div class="pipe-info"><div class="pipe-label">Data</div><div class="pipe-name">Profile</div></div>
+        </div>
+        <div class="pipe-step disabled" data-stage="2" onclick="goToStage(2)">
+          <div class="pipe-num">2</div>
+          <div class="pipe-info"><div class="pipe-label">Target</div><div class="pipe-name">—</div></div>
+        </div>
+        <div class="pipe-step disabled" data-stage="3" onclick="goToStage(3)">
+          <div class="pipe-num">3</div>
+          <div class="pipe-info"><div class="pipe-label">Strategy</div><div class="pipe-name">Choose</div></div>
+        </div>
+        <div class="pipe-step disabled" data-stage="4" onclick="goToStage(4)">
+          <div class="pipe-num">4</div>
+          <div class="pipe-info"><div class="pipe-label">Train</div><div class="pipe-name">Pending</div></div>
+        </div>
+        <div class="pipe-step disabled" data-stage="5" onclick="goToStage(5)">
+          <div class="pipe-num">5</div>
+          <div class="pipe-info"><div class="pipe-label">Result</div><div class="pipe-name">Pending</div></div>
+        </div>
+      </div>
+
+      <!-- STAGE 1: DATA PROFILE -->
+      <div class="stage active" id="stage-1">
+        <div class="stage-card">
+          <h2>Dataset Profile</h2>
+          <div class="lead">Snapshot of your data so you can decide whether it's ready for modeling.</div>
+          <div class="profile-grid" id="profile-grid"></div>
+          <div class="col-types-bar" id="col-types-bar"></div>
+          <div id="profile-warnings"></div>
+          <div class="stage-actions">
+            <span></span>
+            <button class="btn-next" onclick="goToStage(2)">Continue to Target →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAGE 2: TARGET -->
+      <div class="stage" id="stage-2">
+        <div class="stage-card">
+          <h2>Choose Target Column</h2>
+          <div class="lead">The column you want to predict. Grivora AI auto-detects whether this is regression, classification, or time series.</div>
+          <div class="target-row">
+            <div>
+              <div class="label-block">Target column</div>
+              <select class="target-select" id="target-select" onchange="onTargetChange()">
+                <option value="">— Select target column —</option>
+              </select>
+            </div>
+          </div>
+          <div class="target-detection" id="target-detection">
+            <div class="detection-line">
+              <span class="task-chip" id="task-chip">…</span>
+              <span style="color:var(--text3);">target:</span>
+              <strong id="target-display"></strong>
+            </div>
+            <div class="detection-reason" id="detection-reason"></div>
+          </div>
+          <div class="stage-actions">
+            <button class="btn-back" onclick="goToStage(1)">← Back</button>
+            <button class="btn-next" id="btn-to-strategy" disabled onclick="goToStage(3)">Continue to Strategy →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAGE 3: STRATEGY -->
+      <div class="stage" id="stage-3">
+        <div class="stage-card">
+          <h2>Choose Training Strategy</h2>
+          <div class="lead">Three paths. Pick whichever fits your goal.</div>
+          <div class="recommendation-banner" id="reco-banner">Analyzing your data…</div>
+          <div class="strategy-grid">
+            <div class="strategy-card sc-auto" data-strat="auto" onclick="pickStrategy('auto')">
+              <div class="sc-top">
+                <div class="sc-icon">🤖</div>
+                <span class="sc-pick">RECOMMENDED</span>
+              </div>
+              <h3>AI Suggest</h3>
+              <div class="sc-desc">AI analyzes your data and suggests the top 3-5 algorithms. Pick one to train.</div>
+            </div>
+            <div class="strategy-card sc-manual" data-strat="manual" onclick="pickStrategy('manual')">
+              <div class="sc-top">
+                <div class="sc-icon">🎛️</div>
+                <span class="sc-pick">RECOMMENDED</span>
+              </div>
+              <h3>Manual Select</h3>
+              <div class="sc-desc">Browse all 40+ algorithms. Pick whichever you want to use.</div>
+            </div>
+            <div class="strategy-card sc-automl" data-strat="automl" onclick="pickStrategy('automl')">
+              <div class="sc-top">
+                <div class="sc-icon">⚡</div>
+                <span class="sc-pick">RECOMMENDED</span>
+              </div>
+              <h3>Quick Auto-ML</h3>
+              <div class="sc-desc">Train top 5 in parallel and rank them. One click, ~60s.</div>
+            </div>
+          </div>
+
+          <!-- Suggest results -->
+          <div id="suggest-block" style="display:none;">
+            <div style="margin-top:22px;font-size:11.5px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;" id="suggest-source"></div>
+            <div class="suggest-list" id="suggest-list"></div>
+          </div>
+
+          <!-- Manual catalog -->
+          <div id="manual-block" style="display:none;">
+            <div class="catalog-toolbar">
+              <input class="search-box" id="catalog-search" placeholder="Search algorithms…" oninput="filterCatalog()" />
+              <div style="font-size:12px;color:var(--text3);font-weight:600;" id="catalog-count"></div>
+            </div>
+            <div id="catalog-body"></div>
+          </div>
+
+          <!-- Auto-ML launch -->
+          <div id="automl-block" style="display:none;">
+            <div style="background:rgba(5,150,105,.06);border:1px solid rgba(5,150,105,.2);border-radius:12px;padding:18px 22px;margin-top:18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+              <div>
+                <div style="font-weight:800;color:var(--text);margin-bottom:4px;">⚡ Run Auto-ML</div>
+                <div style="font-size:12.5px;color:var(--text2);">Trains 5 algorithms in parallel and ranks them. Takes ~30-90s.</div>
+              </div>
+              <button class="btn-action success" onclick="runAutoML()">Launch Auto-ML →</button>
+            </div>
+          </div>
+
+          <div class="stage-actions">
+            <button class="btn-back" onclick="goToStage(2)">← Back</button>
+            <span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAGE 4: TRAINING -->
+      <div class="stage" id="stage-4">
+        <div class="stage-card">
+          <h2 id="train-stage-title">Training in progress</h2>
+          <div class="lead" id="train-stage-sub">Your model is being trained on the dataset.</div>
+
+          <div class="train-status">
+            <div class="spinner-mini" id="train-spinner"></div>
+            <div class="train-status-text" id="train-status-text">Initializing pipeline…</div>
+          </div>
+
+          <div class="train-console" id="train-console"></div>
+
+          <!-- Auto-ML leaderboard appears here when relevant -->
+          <div id="leaderboard-block" style="display:none;">
+            <h4 style="font-size:11.5px;font-weight:800;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin:18px 0 6px;">Leaderboard</h4>
+            <div style="overflow-x:auto;">
+              <table class="leaderboard-table">
+                <thead>
+                  <tr><th>Rank</th><th>Algorithm</th><th>Score</th><th>Other metrics</th><th>Time</th><th></th></tr>
+                </thead>
+                <tbody id="leaderboard-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="stage-actions">
+            <button class="btn-back" onclick="goToStage(3)">← Back to Strategy</button>
+            <span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAGE 5: MODEL CARD -->
+      <div class="stage" id="stage-5">
+        <div class="stage-card" id="model-card-host">
+          <!-- Model card injected here -->
+        </div>
+      </div>
+
+      <!-- COMPARE VIEW (separate, not part of pipeline) -->
+      <div class="stage" id="stage-compare">
+        <div class="stage-card">
+          <h2>Compare Models</h2>
+          <div class="lead">Side-by-side comparison of selected experiments.</div>
+          <div class="compare-grid" id="compare-grid"></div>
+          <div class="stage-actions">
+            <button class="btn-back" onclick="goToStage(5)">← Back to Result</button>
+            <span></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ============================================================
+   PRODUCTION PMA WORKFLOW — single-file controller.
+   State machine over 5 stages + sidebar + compare view.
+============================================================ */
+
+const $ = id => document.getElementById(id);
+const escapeHtml = s => String(s == null ? '' : s)
+  .replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const STATE = {
+  // Dataset
+  fileName: null, columns: [], n_rows: 0, n_cols: 0,
+  profile: null, target: null, task: null, problem_type: null,
+  // Strategy
+  strategy: null, suggestions: null, catalog: null,
+  // Training
+  trainingActive: false, leaderboard: null,
+  // Result
+  currentResult: null, currentExperimentId: null,
+  // Sidebar
+  experiments: [], summary: {total:0, starred:0, best: null},
+  filter: 'all', searchQuery: '',
+  basket: new Set(),  // experiment ids selected for compare
+  // Charts
+  charts: {},
+};
+
+/* ─────────────────────────────────────────
+   FETCH WRAPPER
+   ───────────────────────────────────────── */
+async function api(method, url, body, timeoutMs = 180000) {
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const opts = {
+      method, signal: ctrl.signal,
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const resp = await fetch(url, opts);
+    clearTimeout(to);
+    if (resp.status === 429) throw new Error('Rate limited. Wait a moment and retry.');
+    let json = {};
+    try { json = await resp.json(); } catch(e){}
+    if (!resp.ok) throw new Error(json.error || `HTTP ${resp.status}`);
+    return json;
+  } catch(e) {
+    clearTimeout(to);
+    if (e.name === 'AbortError') throw new Error('Request timed out.');
+    throw e;
+  }
+}
+
+function showLoader(msg, sub) {
+  $('loader-msg').textContent = msg || 'Working…';
+  $('loader-sub').textContent = sub || '';
+  $('full-loader').classList.add('shown');
+}
+function hideLoader() { $('full-loader').classList.remove('shown'); }
+
+function toggleSidebar() {
+  $('pma-sidebar').classList.toggle('open');
+}
+
+/* ─────────────────────────────────────────
+   BOOT
+   ───────────────────────────────────────── */
+async function boot() {
+  showLoader('Loading dataset…', 'Reading uploaded file');
+  try {
+    const res = await api('POST', '/api/pma/columns', {}, 15000);
+    hideLoader();
+    if (!res.columns?.length) {
+      $('no-upload').style.display = 'block';
+      return;
+    }
+    STATE.fileName = res.file_name || 'dataset';
+    STATE.columns = res.columns;
+    STATE.n_rows = res.n_rows || 0;
+    STATE.n_cols = res.columns.length;
+    $('workflow').style.display = 'block';
+    $('header-meta').innerHTML = `
+      <span class="meta-chip">📂 ${escapeHtml(STATE.fileName)}</span>
+      <span class="meta-chip">🗂️ ${STATE.n_rows.toLocaleString()} rows</span>
+      <span class="meta-chip">📋 ${STATE.n_cols} columns</span>`;
+    // Populate target dropdown
+    $('target-select').innerHTML = '<option value="">— Select target column —</option>' +
+      STATE.columns.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    // Profile
+    await loadProfile();
+    // Sidebar
+    await refreshExperiments();
+  } catch (err) {
+    hideLoader();
+    if (String(err.message).toLowerCase().includes('no file')) {
+      $('no-upload').style.display = 'block';
+    } else {
+      alert('Startup error: ' + err.message);
+    }
+  }
+}
+
+/* ─────────────────────────────────────────
+   STAGE 1: PROFILE
+   ───────────────────────────────────────── */
+async function loadProfile() {
+  // Use the v2/profile endpoint without target — we just need the profile
+  try {
+    const res = await api('POST', '/api/pma/v2/profile', {}, 20000);
+    STATE.profile = res.profile;
+    renderProfile(res.profile);
+  } catch (err) {
+    $('profile-grid').innerHTML = `<div style="color:var(--danger);">Profile error: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderProfile(p) {
+  const tiles = [
+    { v: p.n_rows.toLocaleString(), l: 'rows' },
+    { v: p.n_cols, l: 'columns' },
+    { v: p.n_numeric, l: 'numeric' },
+    { v: p.n_categorical, l: 'categorical' },
+    { v: p.n_date, l: 'date' },
+    { v: p.total_missing_pct + '%', l: 'missing' },
+  ];
+  $('profile-grid').innerHTML = tiles.map(t => `
+    <div class="profile-tile"><div class="v">${t.v}</div><div class="l">${t.l}</div></div>`).join('');
+
+  // Column types bar
+  const total = (p.n_numeric + p.n_categorical + p.n_date + p.n_text) || 1;
+  const segs = [
+    ['numeric', p.n_numeric], ['categorical', p.n_categorical],
+    ['date', p.n_date], ['text', p.n_text],
+  ];
+  $('col-types-bar').innerHTML = segs.map(([k, v]) =>
+    v > 0 ? `<div class="col-types-seg seg-${k}" style="flex:${v};" title="${k}: ${v}">${k} ${v}</div>` : ''
+  ).join('');
+
+  // Warnings
+  const warns = [];
+  if (p.n_rows < 100) warns.push({ kind: 'warn', icon: '⚠️',
+      text: `<strong>Small dataset.</strong> Only ${p.n_rows} rows — models may be unreliable. Consider gathering more data.` });
+  if (p.total_missing_pct > 20) warns.push({ kind: 'warn', icon: '⚠️',
+      text: `<strong>${p.total_missing_pct}% missing values</strong> across the dataset. Models with native missing-value support will work best (XGBoost, LightGBM, HistGradientBoosting).` });
+  if (p.n_categorical > 0 && p.categorical_cols.some(c => c.cardinality === 'high'))
+    warns.push({ kind: 'info', icon: 'ℹ️',
+      text: `<strong>High-cardinality categoricals detected.</strong> CatBoost or LightGBM will handle these efficiently without explicit one-hot encoding.` });
+  if (warns.length === 0) warns.push({ kind: 'ok', icon: '✓',
+      text: `<strong>Looking good.</strong> Dataset has reasonable size and completeness for training.` });
+  $('profile-warnings').innerHTML = warns.map(w =>
+    `<div class="warn-banner ${w.kind}"><div class="ic">${w.icon}</div><div>${w.text}</div></div>`
+  ).join('');
+}
+
+/* ─────────────────────────────────────────
+   STAGE 2: TARGET
+   ───────────────────────────────────────── */
+async function onTargetChange() {
+  const tgt = $('target-select').value;
+  STATE.target = tgt;
+  $('btn-to-strategy').disabled = !tgt;
+  if (!tgt) { $('target-detection').classList.remove('shown'); return; }
+  try {
+    const res = await api('POST', '/api/pma/v2/profile', { target_col: tgt }, 15000);
+    STATE.task = res.task;
+    STATE.problem_type = res.problem_type;
+    STATE.profile = res.profile;
+    const labels = {
+      regression: '🔢 Regression',
+      classification: '🏷️ Classification',
+      time_series: '📈 Time Series',
+      clustering: '🧩 Clustering',
+    };
+    $('task-chip').textContent = labels[res.task] || res.task;
+    $('target-display').textContent = tgt;
+    $('detection-reason').textContent = res.reason || '';
+    $('target-detection').classList.add('shown');
+    // Update pipeline label
+    const step2 = document.querySelector('[data-stage="2"] .pipe-name');
+    if (step2) step2.textContent = tgt.length > 12 ? tgt.slice(0, 12) + '…' : tgt;
+  } catch(err) {
+    $('target-detection').classList.add('shown');
+    $('detection-reason').textContent = 'Error: ' + err.message;
+  }
+}
+
+/* ─────────────────────────────────────────
+   STAGE 3: STRATEGY
+   ───────────────────────────────────────── */
+function pickStrategy(strat) {
+  STATE.strategy = strat;
+  document.querySelectorAll('.strategy-card').forEach(c =>
+    c.classList.toggle('selected', c.dataset.strat === strat)
+  );
+  $('suggest-block').style.display = strat === 'auto' ? '' : 'none';
+  $('manual-block').style.display = strat === 'manual' ? '' : 'none';
+  $('automl-block').style.display = strat === 'automl' ? '' : 'none';
+  if (strat === 'auto' && !STATE.suggestions) runSuggest();
+  if (strat === 'manual' && !STATE.catalog) loadCatalog();
+}
+
+function setRecommendation() {
+  if (!STATE.profile) return;
+  const p = STATE.profile;
+  let recoStrat = 'auto';
+  let reason = '';
+  if (p.n_rows < 200) {
+    recoStrat = 'manual';
+    reason = `With <b>${p.n_rows} rows</b> training is fast — try a simple Linear or Logistic Regression first as a baseline.`;
+  } else if (p.n_rows >= 1000 && p.n_rows <= 50000) {
+    recoStrat = 'automl';
+    reason = `Your dataset (<b>${p.n_rows.toLocaleString()} rows</b>) is in the sweet spot for Auto-ML — let it train top-5 algorithms in parallel.`;
+  } else {
+    recoStrat = 'auto';
+    reason = `AI Suggest is the best starting point — get ranked recommendations with one click.`;
+  }
+  $('reco-banner').innerHTML = `💡 <b>Recommendation:</b> ${reason}`;
+  document.querySelectorAll('.strategy-card').forEach(c =>
+    c.classList.toggle('recommended', c.dataset.strat === recoStrat)
+  );
+}
+
+async function runSuggest() {
+  $('suggest-list').innerHTML = '<div style="padding:20px;color:var(--text3);">🧠 AI is analyzing your data…</div>';
+  $('suggest-block').style.display = '';
+  try {
+    const res = await api('POST', '/api/pma/v2/suggest', { target_col: STATE.target }, 60000);
+    STATE.suggestions = res.picks || [];
+    renderSuggestions(res);
+  } catch (err) {
+    $('suggest-list').innerHTML = `<div style="padding:20px;color:var(--danger);">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderSuggestions(res) {
+  const src = res.source === 'llm' ? '🧠 AI-powered' :
+              res.source === 'llm+rules' ? '🧠 AI + rules' : '📐 Rules';
+  $('suggest-source').textContent = `${src} · ${res.picks.length} algorithms ranked for your data`;
+  if (!res.picks?.length) {
+    $('suggest-list').innerHTML = '<div style="padding:20px;color:var(--text3);">No suggestions available. Try Manual or Auto-ML.</div>';
+    return;
+  }
+  $('suggest-list').innerHTML = res.picks.map(p => {
+    const m = p.meta || {};
+    return `
+    <div class="suggest-card">
+      <div class="rank-badge r${p.rank}">${p.rank}</div>
+      <div>
+        <div class="sc-name">${escapeHtml(m.name || p.id)} <span class="fam-tag">${escapeHtml(m.family || '')}</span></div>
+        <div class="sc-rationale">${escapeHtml(p.rationale || '')}</div>
+        <div class="sc-tags">
+          <span class="tag-chip ${m.speed || 'medium'}">${escapeHtml(m.speed || 'medium')} training</span>
+          ${m.interpretable ? '<span class="tag-chip interp">interpretable</span>' : ''}
+          <span class="tag-chip">conf: ${Math.round((p.confidence || 0) * 100)}%</span>
+        </div>
+      </div>
+      <div class="sc-action"><button class="btn-train" onclick="trainOne('${p.id}','suggest')">Train this →</button></div>
+    </div>`;
+  }).join('');
+}
+
+async function loadCatalog() {
+  $('catalog-body').innerHTML = '<div style="padding:20px;color:var(--text3);">Loading catalog…</div>';
+  try {
+    const res = await api('POST', '/api/pma/v2/algorithms', {
+      task: STATE.task, n_rows: STATE.n_rows, n_cols: STATE.n_cols,
+    }, 15000);
+    STATE.catalog = res;
+    renderCatalog();
+  } catch (err) {
+    $('catalog-body').innerHTML = `<div style="padding:20px;color:var(--danger);">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderCatalog() {
+  const c = STATE.catalog;
+  $('catalog-count').textContent = `${c.total} algorithms · ${Object.keys(c.families).length} families`;
+  let html = '';
+  for (const [fam, algos] of Object.entries(c.families)) {
+    html += `
+      <div class="family-group" data-family="${escapeHtml(fam)}">
+        <div class="family-header">${escapeHtml(fam)} (${algos.length})</div>
+        <div class="algo-grid">
+          ${algos.map(a => `
+            <div class="algo-card" data-name="${escapeHtml(a.name.toLowerCase())}" onclick="trainOne('${a.id}','manual')">
+              <div class="an">${escapeHtml(a.name)}</div>
+              <div class="at">${escapeHtml((a.strengths || []).slice(0, 2).join(' · '))}</div>
+              <div class="tags">
+                <span class="tag-chip ${a.speed}">${escapeHtml(a.speed)}</span>
+                ${a.interpretable ? '<span class="tag-chip interp">interpretable</span>' : ''}
+                ${a.handles_missing ? '<span class="tag-chip">native NA</span>' : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+  }
+  if (c.excluded?.length) {
+    html += `<div style="margin-top:18px;padding:12px 16px;font-size:12px;color:var(--text3);background:var(--surface2);border-radius:10px;">
+      <strong>${c.excluded.length} algorithms hidden</strong> — incompatible with your dataset:
+      ${c.excluded.slice(0, 5).map(x => `${escapeHtml(x.name)} (${escapeHtml(x.reason || '')})`).join(' · ')}
+    </div>`;
+  }
+  $('catalog-body').innerHTML = html;
+}
+
+function filterCatalog() {
+  const q = $('catalog-search').value.toLowerCase().trim();
+  document.querySelectorAll('.family-group').forEach(g => {
+    let any = false;
+    g.querySelectorAll('.algo-card').forEach(card => {
+      const show = !q || card.dataset.name.includes(q);
+      card.style.display = show ? '' : 'none';
+      if (show) any = true;
+    });
+    g.style.display = any ? '' : 'none';
+  });
+}
+
+/* ─────────────────────────────────────────
+   STAGE 4: TRAINING (single + automl)
+   ───────────────────────────────────────── */
+async function trainOne(algoId, source) {
+  goToStage(4);
+  $('leaderboard-block').style.display = 'none';
+  $('train-stage-title').textContent = `Training: ${algoId}`;
+  $('train-stage-sub').textContent = 'Preprocessing → Cross-validation → Final fit → Evaluation';
+  $('train-spinner').classList.remove('done');
+  $('train-status-text').innerHTML = `Training <strong>${escapeHtml(algoId)}</strong>…`;
+  consoleClear();
+  consoleLog('Starting training pipeline', 'info');
+  consoleLog(`Algorithm: ${algoId}`, 'info');
+  consoleLog(`Target: ${STATE.target} · Task: ${STATE.task}`, 'info');
+  consoleLog('Building preprocessing pipeline (median impute + standard scale + one-hot)…', 'info');
+
+  try {
+    const res = await api('POST', '/api/pma/v2/train', {
+      target_col: STATE.target, algo_id: algoId, source: source || 'manual',
+    }, 240000);
+    if (res.logs) res.logs.forEach(l => consoleLog(l.replace(/^\[\d+:\d+:\d+\]\s*/, ''), 'info'));
+    consoleLog('✓ Training complete', 'success');
+    consoleLog(`Test metrics: ${formatMetrics(res.metrics, res.problem_type)}`, 'success');
+    if (res.cv_metrics && Object.keys(res.cv_metrics).length) {
+      const k = Object.keys(res.cv_metrics)[0];
+      const cv = res.cv_metrics[k];
+      consoleLog(`CV ${k}: ${cv.mean.toFixed(4)} ± ${cv.std.toFixed(4)} (${cv.folds.length} folds)`, 'success');
+    }
+    if (res.is_imbalanced) consoleLog('Imbalanced classes detected → class_weight="balanced" applied', 'warn');
+    consoleLog(`Saved as experiment #${res.experiment_id}`, 'success');
+    $('train-spinner').classList.add('done');
+    $('train-status-text').innerHTML = `<strong>Training complete</strong> in ${res.training_time_s}s`;
+    STATE.currentResult = res;
+    STATE.currentExperimentId = res.experiment_id;
+    setTimeout(() => { renderModelCard(res); goToStage(5); refreshExperiments(); }, 600);
+  } catch (err) {
+    consoleLog('✗ Error: ' + err.message, 'error');
+    $('train-status-text').innerHTML = `<span style="color:var(--danger);">Failed: ${escapeHtml(err.message)}</span>`;
+  }
+}
+
+async function runAutoML() {
+  goToStage(4);
+  $('leaderboard-block').style.display = 'block';
+  $('train-stage-title').textContent = 'Auto-ML in progress';
+  $('train-stage-sub').textContent = 'Training top 5 algorithms in parallel…';
+  $('train-spinner').classList.remove('done');
+  $('train-status-text').innerHTML = `<strong>Auto-ML</strong> · 5 algorithms training in parallel…`;
+  consoleClear();
+  consoleLog('Starting Auto-ML', 'info');
+  consoleLog('AI suggesting top 5 algorithms…', 'info');
+  $('leaderboard-body').innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3);"><span class="lb-running">Training models in parallel…</span></td></tr>`;
+  try {
+    const res = await api('POST', '/api/pma/v2/automl', {
+      target_col: STATE.target, top_n: 5,
+    }, 360000);
+    consoleLog(`✓ Auto-ML complete in ${res.total_elapsed_sec}s`, 'success');
+    consoleLog(`${res.leaderboard.filter(e => e.ok).length}/${res.leaderboard.length} models trained successfully`, 'success');
+    if (res.best) consoleLog(`🏆 Winner: ${res.best.algo_name} (score: ${res.best.score.toFixed(4)})`, 'success');
+    $('train-spinner').classList.add('done');
+    $('train-status-text').innerHTML = `<strong>Auto-ML complete</strong> · ${res.total_elapsed_sec}s · winner: ${res.best?.algo_name || 'N/A'}`;
+    STATE.leaderboard = res;
+    renderLeaderboard(res);
+    refreshExperiments();
+  } catch(err) {
+    consoleLog('✗ Auto-ML error: ' + err.message, 'error');
+    $('train-status-text').innerHTML = `<span style="color:var(--danger);">Failed: ${escapeHtml(err.message)}</span>`;
+    $('leaderboard-body').innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--danger);">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function renderLeaderboard(res) {
+  const rows = res.leaderboard.map(e => {
+    if (!e.ok) {
+      return `<tr>
+        <td><div class="rank-medal mx">−</div></td>
+        <td><strong>${escapeHtml(e.algo_name)}</strong><br><span style="font-size:11px;color:var(--text3);">${escapeHtml(e.family || '')}</span></td>
+        <td colspan="3" style="font-size:11px;color:var(--danger);font-style:italic;">⚠️ ${escapeHtml(e.error || 'Failed')}</td>
+        <td></td>
+      </tr>`;
+    }
+    const cls = e.rank <= 3 ? `m${e.rank}` : 'mx';
+    const m = e.metrics || {};
+    const other = res.problem_type === 'classification'
+      ? `acc <strong>${(m.accuracy * 100).toFixed(1)}%</strong> · f1 <strong>${(m.f1 || 0).toFixed(3)}</strong>`
+      : `rmse <strong>${(m.rmse || 0).toFixed(3)}</strong> · mae <strong>${(m.mae || 0).toFixed(3)}</strong>`;
+    return `<tr ${e.rank === 1 ? 'class="winner"' : ''}>
+      <td><div class="rank-medal ${cls}">${e.rank}</div></td>
+      <td><strong>${escapeHtml(e.algo_name)}</strong><br><span style="font-size:11px;color:var(--text3);">${escapeHtml(e.family || '')}</span></td>
+      <td><span style="font-family:'Bricolage Grotesque',sans-serif;font-size:18px;font-weight:900;">${(e.score || 0).toFixed(4)}</span><br><span style="font-size:10px;color:var(--text3);">${res.primary_metric}</span></td>
+      <td style="font-size:12px;color:var(--text2);">${other}</td>
+      <td style="font-size:11px;color:var(--text3);">${e.train_time_sec}s</td>
+      <td><button class="btn-action primary" style="padding:6px 12px;font-size:11px;" onclick="openExperiment(${e.experiment_id})">View →</button></td>
+    </tr>`;
+  }).join('');
+  $('leaderboard-body').innerHTML = rows;
+}
+
+function consoleClear() { $('train-console').innerHTML = ''; }
+function consoleLog(msg, kind = 'info') {
+  const ts = new Date().toLocaleTimeString();
+  $('train-console').innerHTML += `<div class="log-line ${kind}"><span class="ts">[${ts}]</span>${escapeHtml(msg)}</div>`;
+  $('train-console').scrollTop = $('train-console').scrollHeight;
+}
+
+function formatMetrics(m, problemType) {
+  if (!m) return '';
+  if (problemType === 'classification')
+    return `acc=${(m.accuracy*100).toFixed(1)}% f1=${(m.f1||0).toFixed(3)}`;
+  return `r2=${(m.r2 || 0).toFixed(4)} rmse=${(m.rmse || 0).toFixed(3)}`;
+}
+
+/* ─────────────────────────────────────────
+   STAGE 5: MODEL CARD
+   ───────────────────────────────────────── */
+function renderModelCard(res) {
+  const isClf = res.problem_type === 'classification';
+  // Pick primary metric for highlight
+  const primaryName = isClf ? 'f1_macro' : 'r2';
+  const primaryVal = res.metrics?.[primaryName];
+
+  // CV banner
+  let cvBanner = '';
+  if (res.cv_metrics && Object.keys(res.cv_metrics).length) {
+    const k = Object.keys(res.cv_metrics)[0];
+    const cv = res.cv_metrics[k];
+    cvBanner = `<div class="cv-banner">
+      <b>Cross-validation ${k}:</b> ${cv.mean.toFixed(4)} ± ${cv.std.toFixed(4)} across ${cv.folds.length} folds.
+      These come from training data only — your test-set metrics below are on data the model never saw.
+    </div>`;
+  }
+
+  // Metric tiles
+  const m = res.metrics || {};
+  const tiles = [];
+  const tile = (val, label, isPrimary) =>
+    `<div class="metric-tile${isPrimary ? ' primary' : ''}"><div class="v">${val}</div><div class="l">${label}</div></div>`;
+
+  if (isClf) {
+    if (m.f1_macro !== undefined)         tiles.push(tile(m.f1_macro.toFixed(3), 'F1 macro', true));
+    if (m.accuracy !== undefined)         tiles.push(tile((m.accuracy*100).toFixed(1)+'%', 'Accuracy'));
+    if (m.balanced_accuracy !== undefined)tiles.push(tile((m.balanced_accuracy*100).toFixed(1)+'%', 'Balanced'));
+    if (m.f1 !== undefined)               tiles.push(tile(m.f1.toFixed(3), 'F1'));
+    if (m.precision !== undefined)        tiles.push(tile(m.precision.toFixed(3), 'Precision'));
+    if (m.recall !== undefined)           tiles.push(tile(m.recall.toFixed(3), 'Recall'));
+    if (m.roc_auc !== undefined)          tiles.push(tile(m.roc_auc.toFixed(3), 'ROC AUC'));
+  } else {
+    if (m.r2 !== undefined)   tiles.push(tile(m.r2.toFixed(4), 'R²', true));
+    if (m.rmse !== undefined) tiles.push(tile(m.rmse.toFixed(3), 'RMSE'));
+    if (m.mae !== undefined)  tiles.push(tile(m.mae.toFixed(3), 'MAE'));
+    if (m.mape !== undefined) tiles.push(tile(m.mape.toFixed(2)+'%', 'MAPE'));
+  }
+
+  // Hyperparameters table
+  const params = res.params || {};
+  const paramsHtml = Object.keys(params).length
+    ? `<table class="params-table"><thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody>
+        ${Object.entries(params).map(([k, v]) =>
+          `<tr><td class="k">${escapeHtml(k)}</td><td class="v">${escapeHtml(JSON.stringify(v))}</td></tr>`).join('')}
+       </tbody></table>`
+    : `<div style="font-size:12.5px;color:var(--text3);font-style:italic;">Default hyperparameters used.</div>`;
+
+  // Feature importance bars
+  let featHtml = '';
+  if (res.feature_importance?.length) {
+    const max = Math.max(...res.feature_importance.map(f => Math.abs(f.score)), 0.0001);
+    featHtml = res.feature_importance.slice(0, 12).map(f => `
+      <div class="feat-row">
+        <div class="feat-name">${escapeHtml(f.feature)}</div>
+        <div class="feat-bar"><div class="feat-fill" style="width:${Math.max(2, Math.abs(f.score)/max*100)}%"></div></div>
+        <div class="feat-val">${f.score.toFixed(3)}</div>
+      </div>`).join('');
+  } else {
+    featHtml = `<div style="font-size:12.5px;color:var(--text3);font-style:italic;">Feature importance not available.</div>`;
+  }
+
+  // Limitations
+  const limits = [];
+  if (res.is_imbalanced) limits.push('Trained on imbalanced classes — predictions may be biased toward majority class even with class_weight="balanced".');
+  if (res.n_train < 200) limits.push(`Trained on only ${res.n_train} rows — generalization may be limited.`);
+  if (res.problem_type === 'classification' && m.n_classes > 5)
+    limits.push(`${m.n_classes}-class classification — per-class precision/recall may vary.`);
+  if (limits.length === 0) limits.push('No major caveats detected. Standard ML disclaimers apply: validate on truly out-of-time data before production use.');
+
+  // Deploy form fields (use first 6 features)
+  const features = res.feature_names || [];
+  const deployHtml = features.length
+    ? `<div class="deploy-form">
+        ${features.slice(0, 8).map(f => `
+          <div class="deploy-field">
+            <label>${escapeHtml(f)}</label>
+            <input id="deploy-${escapeHtml(f).replace(/[^a-zA-Z0-9]/g,'_')}" data-feat="${escapeHtml(f)}" placeholder="value..." />
+          </div>`).join('')}
+       </div>
+       <button class="btn-action primary" onclick="runDeploy(${res.experiment_id})">Run Prediction</button>
+       ${features.length > 8 ? `<div style="font-size:11px;color:var(--text3);margin-top:8px;">Showing first 8 of ${features.length} features. Other features default to 0/most-frequent.</div>` : ''}
+       <div class="deploy-result" id="deploy-result"></div>`
+    : `<div style="font-size:12.5px;color:var(--text3);">No features available for live prediction.</div>`;
+
+  $('model-card-host').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
+      <div>
+        <h2 style="margin:0 0 4px;">${escapeHtml(res.algo_name)}</h2>
+        <div style="font-size:12.5px;color:var(--text2);">
+          ${escapeHtml(res.algo_family || '')} · trained on ${(res.n_rows||0).toLocaleString()} rows
+          · ${res.training_time_s || '—'}s · saved as #${res.experiment_id || '—'}
+        </div>
+      </div>
+      <div><span class="task-chip">${isClf ? '🏷️ Classification' : '🔢 Regression'}</span></div>
+    </div>
+
+    <div class="card-section">
+      <h4>Test-set Metrics</h4>
+      <div class="metric-grid">${tiles.join('')}</div>
+      ${cvBanner}
+    </div>
+
+    ${res.ai_note && !res.ai_note.startsWith('AI explanation unavailable') ? `
+      <div class="card-section">
+        <div class="ai-box">
+          <div class="ai-tag">🧠 AI Analysis</div>
+          ${escapeHtml(res.ai_note)}
+        </div>
+      </div>` : ''}
+
+    <div class="card-section">
+      <h4>Hyperparameters</h4>
+      ${paramsHtml}
+    </div>
+
+    <div class="card-section">
+      <h4>Feature Importance (permutation-based)</h4>
+      ${featHtml}
+    </div>
+
+    <div class="card-section">
+      <h4>Visual Diagnostics</h4>
+      <div class="charts-row">
+        <div class="chart-frame"><div class="l">${isClf ? 'Class predictions vs actual' : 'Predicted vs actual'}</div><canvas id="chart-pred" height="220"></canvas></div>
+        <div class="chart-frame"><div class="l">${isClf ? 'Per-class error rate' : 'Residuals (errors)'}</div><canvas id="chart-err" height="220"></canvas></div>
+      </div>
+    </div>
+
+    ${isClf ? `
+    <div class="card-section">
+      <h4>Confusion Matrix</h4>
+      <div class="cm-axis-label">Predicted class →</div>
+      <div id="cm-container"></div>
+      <div class="cm-axis-label" style="writing-mode:horizontal-tb;">↑ Actual class</div>
+      <div class="cm-legend">
+        <span><span class="cm-legend-dot" style="background:rgba(5,150,105,.7);"></span> Correct (diagonal)</span>
+        <span><span class="cm-legend-dot" style="background:rgba(220,38,38,.55);"></span> Misclassified (off-diagonal)</span>
+      </div>
+    </div>` : ''}
+
+
+    <div class="card-section">
+      <h4>Limitations &amp; Caveats</h4>
+      <ul style="font-size:12.5px;color:var(--text2);line-height:1.65;margin:0;padding-left:20px;">
+        ${limits.map(l => `<li>${escapeHtml(l)}</li>`).join('')}
+      </ul>
+    </div>
+
+    <div class="card-section">
+      <h4>Try It (Live Prediction)</h4>
+      <div class="deploy-panel">${deployHtml}</div>
+    </div>
+
+    <div class="card-actions">
+      <button class="btn-action" onclick="goToStage(3)">← Train Another</button>
+      <button class="btn-action" onclick="downloadResultJson()">⬇ Download JSON</button>
+      <button class="btn-action ${res.experiment_id ? '' : 'disabled'}" onclick="toggleStarFromCard(${res.experiment_id})" id="star-btn-card">★ Star</button>
+      <button class="btn-action danger" onclick="deleteCurrentExperiment()" ${res.experiment_id ? '' : 'style="display:none;"'}>Delete</button>
+    </div>
+  `;
+
+  // Render charts
+  setTimeout(() => {
+    Object.values(STATE.charts).forEach(c => { try { c.destroy(); } catch(e){} });
+    STATE.charts = {};
+    if (isClf) renderClassificationCharts(res);
+    else renderRegressionCharts(res);
+  }, 80);
+}
+
+function renderClassificationCharts(res) {
+  const yt = res.y_true || [], yp = res.y_pred || [];
+  if (!yt.length) return;
+  const classes = Array.from(new Set([...yt, ...yp]));
+  const actCounts = classes.map(c => yt.filter(v => v == c).length);
+  const predCounts = classes.map(c => yp.filter(v => v == c).length);
+  STATE.charts.pred = new Chart($('chart-pred'), {
+    type: 'bar',
+    data: { labels: classes.map(String),
+      datasets: [
+        { label: 'Actual', data: actCounts, backgroundColor: 'rgba(124,58,237,.7)' },
+        { label: 'Predicted', data: predCounts, backgroundColor: 'rgba(5,150,105,.7)' },
+      ]},
+    options: { responsive:true, plugins:{ legend:{ position:'bottom' } } },
+  });
+  const errRates = classes.map(c => {
+    const tot = yt.filter(v => v==c).length;
+    const wrong = yt.reduce((a, v, i) => a + (v==c && yp[i]!=c ? 1 : 0), 0);
+    return tot ? wrong/tot : 0;
+  });
+  STATE.charts.err = new Chart($('chart-err'), {
+    type: 'bar',
+    data: { labels: classes.map(String),
+      datasets: [{ label:'Error rate', data: errRates,
+        backgroundColor: errRates.map(r => r > 0.2 ? 'rgba(220,38,38,.7)' : 'rgba(37,99,235,.6)') }] },
+    options: { responsive:true, plugins:{ legend:{ display:false } },
+      scales: { y: { beginAtZero:true, max:1, ticks:{ callback: v => (v*100).toFixed(0)+'%' } } } },
+  });
+  // Render confusion matrix heatmap
+  renderConfusionMatrix(yt, yp, classes);
+}
+
+function renderConfusionMatrix(yTrue, yPred, classes) {
+  const container = $('cm-container');
+  if (!container) return;
+  if (!yTrue.length || !yPred.length) {
+    container.innerHTML = '<div style="font-size:12.5px;color:var(--text3);font-style:italic;padding:12px;">No prediction data available for confusion matrix.</div>';
+    return;
+  }
+
+  // Cap at 15 classes for readability
+  const MAX_CLASSES = 15;
+  let displayClasses = classes;
+  let truncated = false;
+  if (classes.length > MAX_CLASSES) {
+    displayClasses = classes.slice(0, MAX_CLASSES);
+    truncated = true;
+  }
+
+  const n = displayClasses.length;
+  // Build confusion matrix: matrix[actual][predicted] = count
+  const matrix = Array.from({ length: n }, () => Array(n).fill(0));
+  for (let i = 0; i < yTrue.length; i++) {
+    const ai = displayClasses.indexOf(yTrue[i]);
+    const pi = displayClasses.indexOf(yPred[i]);
+    if (ai >= 0 && pi >= 0) matrix[ai][pi]++;
+  }
+
+  // Row totals for normalization
+  const rowTotals = matrix.map(row => row.reduce((a, b) => a + b, 0));
+  const maxVal = Math.max(...matrix.flat(), 1);
+
+  // Build grid: (n+1) columns (header col + n class cols)
+  const cols = n + 1;
+  let html = `<div class="cm-wrap"><div class="cm-grid" style="grid-template-columns: 80px repeat(${n}, 1fr);">`;
+
+  // Top-left corner (empty)
+  html += '<div class="cm-header"></div>';
+  // Column headers (predicted classes)
+  for (const cls of displayClasses) {
+    const label = String(cls).length > 8 ? String(cls).slice(0, 7) + '…' : String(cls);
+    html += `<div class="cm-header" title="${escapeHtml(String(cls))}">${escapeHtml(label)}</div>`;
+  }
+
+  // Rows (actual classes)
+  for (let r = 0; r < n; r++) {
+    // Row header
+    const rowLabel = String(displayClasses[r]);
+    const shortLabel = rowLabel.length > 8 ? rowLabel.slice(0, 7) + '…' : rowLabel;
+    html += `<div class="cm-header" title="${escapeHtml(rowLabel)}" style="justify-content:flex-end;padding-right:8px;">${escapeHtml(shortLabel)}</div>`;
+
+    for (let c = 0; c < n; c++) {
+      const count = matrix[r][c];
+      const pct = rowTotals[r] > 0 ? (count / rowTotals[r] * 100) : 0;
+      const isDiagonal = r === c;
+      const intensity = Math.min(count / maxVal, 1);
+
+      let bgColor, textColor;
+      if (isDiagonal) {
+        // Green for correct predictions — intensity scales with count
+        const alpha = 0.15 + intensity * 0.6;
+        bgColor = `rgba(5,150,105,${alpha.toFixed(2)})`;
+        textColor = intensity > 0.4 ? '#fff' : 'var(--text)';
+      } else if (count > 0) {
+        // Red for misclassifications — intensity scales with count
+        const alpha = 0.1 + intensity * 0.55;
+        bgColor = `rgba(220,38,38,${alpha.toFixed(2)})`;
+        textColor = intensity > 0.35 ? '#fff' : 'var(--text)';
+      } else {
+        // Zero — very subtle background
+        bgColor = 'var(--surface2)';
+        textColor = 'var(--text3)';
+      }
+
+      html += `<div class="cm-cell" style="background:${bgColor};color:${textColor};" title="Actual: ${escapeHtml(String(displayClasses[r]))} → Predicted: ${escapeHtml(String(displayClasses[c]))}\nCount: ${count} (${pct.toFixed(1)}%)">
+        <span class="cm-count">${count}</span>
+        <span class="cm-pct">${pct.toFixed(1)}%</span>
+      </div>`;
+    }
+  }
+
+  html += '</div></div>';
+
+  if (truncated) {
+    html += `<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic;">
+      Showing ${MAX_CLASSES} of ${classes.length} classes. Full matrix too large to display.
+    </div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function renderRegressionCharts(res) {
+  const yt = res.y_true || [], yp = res.y_pred || [];
+  if (!yt.length) return;
+  const points = yt.map((v, i) => ({ x: v, y: yp[i] }));
+  const min = Math.min(...yt, ...yp), max = Math.max(...yt, ...yp);
+  STATE.charts.pred = new Chart($('chart-pred'), {
+    type: 'scatter',
+    data: { datasets: [
+      { label:'Predictions', data:points, backgroundColor:'rgba(124,58,237,.55)', pointRadius:3 },
+      { label:'Perfect', data: [{x:min,y:min},{x:max,y:max}], type:'line', borderColor:'rgba(5,150,105,.6)', borderDash:[6,4], pointRadius:0, fill:false }
+    ] },
+    options: { responsive:true, plugins:{ legend:{ position:'bottom' } },
+      scales: { x:{ title:{ display:true, text:'Actual' } }, y:{ title:{ display:true, text:'Predicted' } } } },
+  });
+  const residuals = yt.map((v, i) => yp[i] - v);
+  STATE.charts.err = new Chart($('chart-err'), {
+    type:'bar',
+    data: { labels: residuals.map((_,i) => i+1),
+      datasets:[{ label:'Residual', data: residuals,
+        backgroundColor: residuals.map(r => r >= 0 ? 'rgba(37,99,235,.6)' : 'rgba(220,38,38,.55)') }] },
+    options: { responsive:true, plugins:{ legend:{ display:false } } },
+  });
+}
+
+async function runDeploy(expId) {
+  const inputs = document.querySelectorAll('#model-card-host .deploy-field input');
+  const data = {};
+  inputs.forEach(inp => {
+    const f = inp.dataset.feat;
+    let v = inp.value.trim();
+    if (v === '') return;
+    const asNum = Number(v);
+    data[f] = isNaN(asNum) ? v : asNum;
+  });
+  if (Object.keys(data).length === 0) { alert('Fill at least one field to predict.'); return; }
+  $('deploy-result').classList.remove('shown');
+  $('deploy-result').innerHTML = '';
+  try {
+    const res = await api('POST', '/api/pma/v2/deploy', { experiment_id: expId, input_data: data }, 30000);
+    let html = `<div class="deploy-result-label">Prediction</div>
+                <div class="deploy-result-value">${escapeHtml(String(res.prediction))}</div>`;
+    if (res.confidence !== undefined) html += `<div class="deploy-confidence">Confidence: <strong>${res.confidence}%</strong></div>`;
+    if (res.probabilities?.length) {
+      html += `<div style="margin-top:8px;font-size:11.5px;color:var(--text2);">
+        ${res.probabilities.map(p => `<span style="margin-right:10px;">${escapeHtml(String(p.class))}: <b>${(p.prob*100).toFixed(1)}%</b></span>`).join('')}
+      </div>`;
+    }
+    $('deploy-result').innerHTML = html;
+    $('deploy-result').classList.add('shown');
+  } catch(err) {
+    $('deploy-result').innerHTML = `<div style="color:var(--danger);">Error: ${escapeHtml(err.message)}</div>`;
+    $('deploy-result').classList.add('shown');
+  }
+}
+
+function downloadResultJson() {
+  const blob = new Blob([JSON.stringify(STATE.currentResult, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${STATE.currentResult.algo_id}_result.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function toggleStarFromCard(expId) {
+  if (!expId) return;
+  try {
+    const r = await api('POST', `/api/pma/v2/experiments/${expId}/star`);
+    refreshExperiments();
+    const btn = $('star-btn-card');
+    btn.textContent = r.starred ? '★ Starred' : '☆ Star';
+  } catch(e) { alert(e.message); }
+}
+
+async function deleteCurrentExperiment() {
+  if (!STATE.currentExperimentId) return;
+  if (!confirm('Delete this experiment? The model file stays on disk.')) return;
+  try {
+    await api('DELETE', `/api/pma/v2/experiments/${STATE.currentExperimentId}`);
+    STATE.currentExperimentId = null;
+    refreshExperiments();
+    goToStage(3);
+  } catch(e) { alert(e.message); }
+}
+
+/* ─────────────────────────────────────────
+   PIPELINE NAV
+   ───────────────────────────────────────── */
+function goToStage(stage) {
+  document.querySelectorAll('.stage').forEach(s => s.classList.remove('active'));
+  if (stage === 'compare') {
+    $('stage-compare').classList.add('active');
+    return;
+  }
+  $('stage-' + stage)?.classList.add('active');
+  // Update pipeline visuals
+  document.querySelectorAll('.pipe-step').forEach(step => {
+    const n = parseInt(step.dataset.stage);
+    step.classList.remove('active', 'complete', 'disabled');
+    if (n === stage) step.classList.add('active');
+    else if (n < stage) step.classList.add('complete');
+    else step.classList.add('disabled');
+    // Allow clicking back to any earlier stage
+    if (n <= stage) step.classList.remove('disabled');
+  });
+  if (stage === 3) setRecommendation();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ─────────────────────────────────────────
+   SIDEBAR — experiments list, search, filters, basket
+   ───────────────────────────────────────── */
+async function refreshExperiments() {
+  try {
+    const params = new URLSearchParams();
+    params.set('limit', '50');
+    if (STATE.filter === 'starred') params.set('starred', '1');
+    else if (STATE.filter === 'classification') params.set('task', 'classification');
+    else if (STATE.filter === 'regression')     params.set('task', 'regression');
+    if (STATE.searchQuery) params.set('q', STATE.searchQuery);
+    const res = await api('GET', `/api/pma/v2/experiments?${params}`, null, 15000);
+    STATE.experiments = res.experiments || [];
+    STATE.summary = res.summary || {};
+    renderSidebar();
+  } catch(e) {
+    console.warn('Sidebar refresh:', e.message);
+  }
+}
+
+function renderSidebar() {
+  const s = STATE.summary;
+  $('sb-counter').textContent = s.total || 0;
+  $('sb-total').textContent = s.total || 0;
+  $('sb-starred').textContent = s.starred || 0;
+  if (s.best?.algo_name) {
+    const score = s.best.primary_score == null ? '—' : Number(s.best.primary_score).toFixed(3);
+    $('sb-best').textContent = score;
+    $('sb-best').title = `${s.best.algo_name} (${s.best.primary_metric})`;
+  } else {
+    $('sb-best').textContent = '—';
+  }
+
+  if (!STATE.experiments.length) {
+    $('sb-list').innerHTML = `<div class="sb-empty"><div class="icon">🧪</div>
+      ${STATE.searchQuery || STATE.filter !== 'all' ? 'No matches.' : 'No experiments yet.<br>Train your first model →'}
+    </div>`;
+    return;
+  }
+  $('sb-list').innerHTML = STATE.experiments.map(e => {
+    const isActive = e.id === STATE.currentExperimentId;
+    const inBasket = STATE.basket.has(e.id);
+    const score = e.primary_score == null ? '—' : Number(e.primary_score).toFixed(3);
+    return `
+    <div class="exp-row ${isActive ? 'active' : ''} ${inBasket ? 'in-basket' : ''}" onclick="openExperiment(${e.id})">
+      <input type="checkbox" class="exp-checkbox" ${inBasket ? 'checked' : ''} onclick="event.stopPropagation();toggleBasket(${e.id})" />
+      <div class="exp-body">
+        <div class="exp-name">${escapeHtml(e.algo_name)}</div>
+        <div class="exp-meta">${escapeHtml(e.dataset_name)} · ${escapeHtml(e.task)}${e.is_imbalanced ? ' · imb' : ''}</div>
+      </div>
+      <div class="exp-actions">
+        <button class="star-btn ${e.starred ? 'starred' : ''}"
+                onclick="event.stopPropagation();toggleStar(${e.id})" title="${e.starred ? 'Unstar' : 'Star'}">★</button>
+        <div class="exp-score">${score}</div>
+        <div class="exp-score-label">${escapeHtml(e.primary_metric || '')}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setFilter(f) {
+  STATE.filter = f;
+  document.querySelectorAll('.sb-filter').forEach(el =>
+    el.classList.toggle('active', el.dataset.filter === f));
+  refreshExperiments();
+}
+
+let _searchTimer = null;
+function onSearchChange() {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => {
+    STATE.searchQuery = $('sb-search-input').value.trim();
+    refreshExperiments();
+  }, 250);
+}
+
+async function toggleStar(id) {
+  try { await api('POST', `/api/pma/v2/experiments/${id}/star`); refreshExperiments(); }
+  catch(e) { alert(e.message); }
+}
+
+function toggleBasket(id) {
+  if (STATE.basket.has(id)) STATE.basket.delete(id);
+  else STATE.basket.add(id);
+  renderSidebar();
+  renderBasket();
+}
+
+function clearBasket() { STATE.basket.clear(); renderSidebar(); renderBasket(); }
+
+function renderBasket() {
+  if (STATE.basket.size === 0) { $('sb-basket').classList.add('hidden'); return; }
+  $('sb-basket').classList.remove('hidden');
+  $('basket-head').textContent = `${STATE.basket.size} selected for compare`;
+}
+
+async function openExperiment(id) {
+  if (!id) return;
+  showLoader('Loading experiment…');
+  try {
+    const res = await api('GET', `/api/pma/v2/experiments/${id}`);
+    hideLoader();
+    const e = res.experiment;
+    STATE.currentExperimentId = id;
+    STATE.currentResult = {
+      algo_id: e.algo_id, algo_name: e.algo_name, algo_family: e.algo_family,
+      task: e.task, problem_type: e.problem_type, target_col: e.target_col,
+      n_rows: e.n_rows, n_cols: e.n_cols,
+      n_train: e.n_rows ? Math.round(e.n_rows * 0.8) : 0,
+      params: e.params, metrics: e.metrics, cv_metrics: e.cv_metrics,
+      feature_importance: e.feature_importance, feature_names: e.params?.feature_names || [],
+      is_imbalanced: e.is_imbalanced, training_time_s: e.training_time_s,
+      experiment_id: e.id, model_path: e.model_path,
+      // Use persisted y_true/y_pred so past experiments show diagnostic charts
+      y_true: e.y_true || [], y_pred: e.y_pred || [], ai_note: '',
+    };
+    renderModelCard(STATE.currentResult);
+    goToStage(5);
+    refreshExperiments();
+  } catch(err) {
+    hideLoader();
+    alert('Could not open experiment: ' + err.message);
+  }
+}
+
+/* ─────────────────────────────────────────
+   COMPARE VIEW
+   ───────────────────────────────────────── */
+async function openCompare() {
+  if (STATE.basket.size < 2) { alert('Select at least 2 experiments to compare.'); return; }
+  showLoader('Loading comparison…');
+  try {
+    const res = await api('POST', '/api/pma/v2/experiments/compare', { ids: Array.from(STATE.basket) });
+    hideLoader();
+    renderCompare(res.experiments || []);
+    goToStage('compare');
+  } catch(err) {
+    hideLoader();
+    alert(err.message);
+  }
+}
+
+function renderCompare(experiments) {
+  if (!experiments.length) { $('compare-grid').innerHTML = '<div>No experiments returned.</div>'; return; }
+  // Find best score
+  const isClf = experiments[0].problem_type === 'classification';
+  const bestScore = Math.max(...experiments.map(e => e.primary_score || -Infinity));
+  $('compare-grid').innerHTML = experiments.map(e => {
+    const isWinner = e.primary_score === bestScore;
+    const m = e.metrics || {};
+    const rows = [];
+    rows.push({ k: 'Score (' + e.primary_metric + ')',
+                v: (e.primary_score == null ? '—' : Number(e.primary_score).toFixed(4)),
+                best: isWinner });
+    if (isClf) {
+      rows.push({ k: 'Accuracy', v: m.accuracy != null ? (m.accuracy*100).toFixed(1)+'%' : '—' });
+      rows.push({ k: 'F1', v: m.f1 != null ? m.f1.toFixed(3) : '—' });
+      rows.push({ k: 'Precision', v: m.precision != null ? m.precision.toFixed(3) : '—' });
+      rows.push({ k: 'Recall', v: m.recall != null ? m.recall.toFixed(3) : '—' });
+    } else {
+      rows.push({ k: 'R²', v: m.r2 != null ? m.r2.toFixed(4) : '—' });
+      rows.push({ k: 'RMSE', v: m.rmse != null ? m.rmse.toFixed(3) : '—' });
+      rows.push({ k: 'MAE', v: m.mae != null ? m.mae.toFixed(3) : '—' });
+      rows.push({ k: 'MAPE', v: m.mape != null ? m.mape.toFixed(2)+'%' : '—' });
+    }
+    rows.push({ k: 'Train time', v: e.training_time_s != null ? e.training_time_s + 's' : '—' });
+    rows.push({ k: 'Rows trained', v: (e.n_rows || 0).toLocaleString() });
+    return `<div class="compare-col ${isWinner ? 'winner' : ''}">
+      <h4>${isWinner ? '🏆 ' : ''}${escapeHtml(e.algo_name)}</h4>
+      <div class="col-meta">${escapeHtml(e.algo_family || '')} · ${escapeHtml(e.dataset_name)}</div>
+      ${rows.map(r => `<div class="compare-row ${r.best ? 'best' : ''}">
+        <span class="k">${escapeHtml(r.k)}</span>
+        <span class="v">${escapeHtml(r.v)}</span>
+      </div>`).join('')}
+      <button class="btn-action primary" style="margin-top:14px;width:100%;font-size:11.5px;" onclick="openExperiment(${e.id})">Open model card →</button>
+    </div>`;
+  }).join('');
+}
+
+/* ─────────────────────────────────────────
+   BOOT
+   ───────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', boot);
+</script>
+{% endblock %}

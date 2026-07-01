@@ -1,0 +1,12 @@
+# DEPRECATED
+#
+# This file has been merged into requirements.txt.
+# All packages previously listed here are now in the main requirements file.
+#
+# To install dependencies, run:
+#     pip install -r requirements.txt
+#
+# This file is kept only to avoid breaking old setup scripts.
+# It will be removed in a future release.
+
+-r requirements.txt

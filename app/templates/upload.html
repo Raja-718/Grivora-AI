@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}Upload Data{% endblock %}
+{% block content %}
+
+<div style="max-width: 640px; margin: 60px auto;">
+
+  <!-- Header -->
+  <div style="text-align:center; margin-bottom:40px;">
+    <div style="font-size:48px; margin-bottom:16px; animation: float 3s ease-in-out infinite;">📂</div>
+    <h1 style="margin-bottom:10px;">Upload Your Dataset</h1>
+    <p style="color:var(--text2);">CSV or Excel files supported. Any dataset type works.</p>
+  </div>
+
+  <!-- Upload card -->
+  <div class="card" style="padding:40px;">
+
+    <!-- Drop zone -->
+    <div id="drop-zone" style="border:2px dashed var(--border2); border-radius:14px; padding:48px 24px; text-align:center; transition:all 0.28s ease; cursor:pointer; margin-bottom:24px; position:relative; overflow:hidden;">
+      <div id="drop-icon" style="font-size:40px; margin-bottom:12px; transition:transform 0.3s ease;">🗂️</div>
+      <p style="color:var(--text); font-weight:500; margin-bottom:6px;">Drag & drop your file here</p>
+      <p style="color:var(--text3); font-size:13px;">or click to browse</p>
+      <p style="color:var(--text3); font-size:12px; margin-top:8px;">.csv, .xlsx, .xls supported</p>
+      <input type="file" id="file-input" accept=".csv,.xlsx,.xls"
+        style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
+    </div>
+
+    <!-- Selected file info -->
+    <div id="file-selected" style="display:none; margin-bottom:20px; padding:12px 16px; background:rgba(56,189,248,0.07); border:1px solid var(--border2); border-radius:10px; display:none; align-items:center; gap:12px;">
+      <span style="font-size:22px;">📄</span>
+      <div>
+        <div id="file-name" style="font-weight:600; font-size:14px; color:var(--text);"></div>
+        <div id="file-size" style="font-size:12px; color:var(--text2);"></div>
+      </div>
+      <span onclick="clearFile()" style="margin-left:auto; color:var(--text3); cursor:pointer; font-size:18px; transition:color 0.2s;" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='var(--text3)'">✕</span>
+    </div>
+
+    <!-- Upload button -->
+    <button onclick="uploadFile()" id="upload-btn" style="width:100%; padding:14px; font-size:15px; border-radius:12px; justify-content:center;">
+      <span id="btn-text">⬆️ Upload & Analyze</span>
+    </button>
+
+    <!-- Status message -->
+    <div id="upload-status" style="margin-top:20px; display:none;"></div>
+  </div>
+
+  <!-- Format hints -->
+  <div style="margin-top:24px; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+    <div style="padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:10px; font-size:12px; color:var(--text2);">
+      <span style="color:var(--accent3);">✓</span> &nbsp;First row = column headers
+    </div>
+    <div style="padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:10px; font-size:12px; color:var(--text2);">
+      <span style="color:var(--accent3);">✓</span> &nbsp;Any number of rows/columns
+    </div>
+    <div style="padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:10px; font-size:12px; color:var(--text2);">
+      <span style="color:var(--accent3);">✓</span> &nbsp;Mixed text + numbers OK
+    </div>
+    <div style="padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:10px; font-size:12px; color:var(--text2);">
+      <span style="color:var(--accent3);">✓</span> &nbsp;Sales, school, HR, any type
+    </div>
+  </div>
+</div>
+
+<style>
+#drop-zone:hover, #drop-zone.dragover {
+  border-color: var(--accent);
+  background: rgba(56,189,248,0.05);
+  box-shadow: 0 0 30px rgba(56,189,248,0.12);
+}
+#drop-zone:hover #drop-icon { transform: scale(1.15) rotate(-5deg); }
+</style>
+
+<script>
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+// Drag & drop
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) showFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) showFile(fileInput.files[0]); });
+
+function showFile(file) {
+  document.getElementById('file-name').textContent = file.name;
+  document.getElementById('file-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
+  const sel = document.getElementById('file-selected');
+  sel.style.display = 'flex';
+  sel.style.animation = 'fadeUp 0.3s ease both';
+}
+
+function clearFile() {
+  fileInput.value = '';
+  document.getElementById('file-selected').style.display = 'none';
+}
+
+async function uploadFile() {
+  const file = fileInput.files[0];
+  if (!file) {
+    showStatus('⚠️ Please select a file first.', '#fbbf24');
+    return;
+  }
+
+  const btn = document.getElementById('upload-btn');
+  const btnText = document.getElementById('btn-text');
+  btn.disabled = true;
+  btnText.textContent = '⏳ Uploading...';
+  btn.style.opacity = '0.7';
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+
+    if (res.ok) {
+      sessionStorage.setItem('uploaded_file', data.path);
+      btnText.textContent = '✅ Uploaded!';
+      btn.style.background = 'linear-gradient(135deg,#059669,#34d399)';
+
+      // Figure out the user's intent from ?next=, then referrer, then default.
+      // The primary CTA is the page the user was trying to reach;
+      // the other two tools are always offered as secondary options so the
+      // user can switch tools without going back.
+      const intent = detectIntent();
+      showStatus(renderSuccessHtml(intent), null);
+
+      // Optional auto-redirect if the intent came from a ?next= (explicit hand-off)
+      // We DON'T auto-redirect on referrer detection because the user may
+      // have arrived via the nav bar and actually wanted to stay here.
+      if (intent.autoRedirect) {
+        setTimeout(() => { window.location.href = intent.primary.href; }, 1500);
+      }
+    } else {
+      showStatus(`❌ ${data.error}`, '#f87171');
+      reset();
+    }
+  } catch(e) {
+    showStatus(`❌ Upload failed: ${e.message}`, '#f87171');
+    reset();
+  }
+}
+
+// Where should we send the user after upload?
+// Priority: (1) explicit ?next= query param (2) referrer URL path (3) default
+function detectIntent() {
+  const TOOLS = {
+    predict:  { href: '/predict',   label: 'Continue to Predictive ML', icon: '🤖',
+                bg: 'linear-gradient(135deg,#7c3aed,#a78bfa)', fg: '#fff' },
+    analysis: { href: '/analysis',  label: 'Continue to Data Analysis', icon: '📊',
+                bg: 'linear-gradient(135deg,#0ea5e9,#38bdf8)', fg: '#020b18' },
+    bi:       { href: '/bi',        label: 'Continue to Business Intel', icon: '💼',
+                bg: 'linear-gradient(135deg,#059669,#34d399)', fg: '#fff' },
+    chat:     { href: '/chat',      label: 'Ask AI',                    icon: '💬',
+                bg: 'linear-gradient(135deg,#0ea5e9,#38bdf8)', fg: '#020b18' },
+    dashboard:{ href: '/dashboard', label: 'Open Dashboard',            icon: '📊',
+                bg: 'rgba(56,189,248,0.08)', fg: 'var(--accent)', border: '1px solid var(--border2)' },
+  };
+
+  let primaryKey = null;
+  let autoRedirect = false;
+
+  // 1. Explicit ?next=... param takes priority + triggers auto-redirect
+  const url = new URL(window.location.href);
+  const nextParam = url.searchParams.get('next');
+  if (nextParam) {
+    const map = { predict: 'predict', analysis: 'analysis', bi: 'bi',
+                  chat: 'chat', dashboard: 'dashboard' };
+    primaryKey = map[nextParam] || null;
+    if (primaryKey) autoRedirect = true;
+  }
+
+  // 2. Referrer detection (they navigated here from a specific tool)
+  if (!primaryKey && document.referrer) {
+    try {
+      const ref = new URL(document.referrer);
+      if (ref.origin === window.location.origin) {
+        const path = ref.pathname;
+        if      (path.startsWith('/predict'))  primaryKey = 'predict';
+        else if (path.startsWith('/analysis')) primaryKey = 'analysis';
+        else if (path.startsWith('/bi'))       primaryKey = 'bi';
+      }
+    } catch(_) {}
+  }
+
+  // 3. Default fallback
+  if (!primaryKey) primaryKey = 'analysis';
+
+  const primary = TOOLS[primaryKey];
+  const others = Object.entries(TOOLS)
+    .filter(([k]) => k !== primaryKey)
+    .map(([k, v]) => v);
+  return { primary, others, autoRedirect };
+}
+
+function renderSuccessHtml(intent) {
+  const pBtn = intent.primary;
+  const primaryStyle =
+    `display:inline-flex;align-items:center;gap:8px;padding:12px 24px;` +
+    `background:${pBtn.bg};color:${pBtn.fg};font-weight:700;font-size:14px;` +
+    `border-radius:10px;text-shadow:none;box-shadow:0 4px 20px rgba(56,189,248,0.25);` +
+    `text-decoration:none;transition:transform .15s;`;
+  const secondaryStyle =
+    `display:inline-flex;align-items:center;gap:6px;padding:10px 18px;` +
+    `background:rgba(56,189,248,0.08);color:var(--accent);font-weight:600;font-size:13px;` +
+    `border-radius:10px;border:1px solid var(--border2);text-decoration:none;`;
+
+  const redirectNote = intent.autoRedirect
+    ? `<div style="font-size:12px;color:var(--text3);margin-top:10px;">Redirecting automatically...</div>`
+    : '';
+
+  return `
+    <div style="text-align:center; padding:8px;">
+      <div style="font-size:32px; margin-bottom:10px;">✅</div>
+      <div style="font-weight:600; color:var(--text); margin-bottom:18px;">File uploaded successfully!</div>
+      <div style="display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:16px;">
+        <a href="${pBtn.href}" style="${primaryStyle}">${pBtn.icon} ${pBtn.label} →</a>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;">Or switch to another tool</div>
+      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+        ${intent.others.map(t => `<a href="${t.href}" style="${secondaryStyle}">${t.icon} ${t.label.replace(/^Continue to |^Open /,'')}</a>`).join('')}
+      </div>
+      ${redirectNote}
+    </div>`;
+}
+
+function showStatus(html, color) {
+  const s = document.getElementById('upload-status');
+  s.style.display = 'block';
+  s.style.padding = '16px';
+  s.style.background = color ? `rgba(${color === '#fbbf24' ? '251,191,36' : '248,113,113'},0.08)` : 'var(--surface2)';
+  s.style.border = `1px solid ${color || 'var(--border)'}`;
+  s.style.borderRadius = '12px';
+  s.style.color = color || 'var(--text)';
+  s.style.animation = 'fadeUp 0.3s ease both';
+  s.innerHTML = html;
+}
+
+function reset() {
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = false;
+  btn.style.opacity = '1';
+  btn.style.background = '';
+  document.getElementById('btn-text').textContent = '⬆️ Upload & Analyze';
+}
+</script>
+{% endblock %}

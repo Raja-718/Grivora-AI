@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — Grivora AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#f0f4ff; --surface:#fff; --surface2:#f8faff;
+      --border:rgba(29,78,216,.13); --border2:rgba(29,78,216,.28);
+      --accent:#1d4ed8; --accent2:#7c3aed; --accent3:#0891b2;
+      --text:#0a1628; --text2:#3a5080; --text3:#7a96c0;
+      --success:#059669; --danger:#dc2626;
+      --shadow:0 8px 48px rgba(10,22,40,.11),0 2px 8px rgba(10,22,40,.06);
+    }
+    @media(prefers-color-scheme:dark){:root{
+      --bg:#06080f; --surface:#111827; --surface2:#161d2e;
+      --border:rgba(79,138,255,.12); --border2:rgba(79,138,255,.26);
+      --accent:#4f8aff; --accent2:#a78bfa; --accent3:#22d3ee;
+      --text:#eef2ff; --text2:#8faad8; --text3:#3d527a;
+      --shadow:0 8px 48px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.3);
+    }}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      font-family:'Plus Jakarta Sans',sans-serif; background:var(--bg); color:var(--text);
+      min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px 16px;
+    }
+    body::before{
+      content:''; position:fixed; inset:0; pointer-events:none;
+      background-image:radial-gradient(var(--border) 1px,transparent 1px);
+      background-size:28px 28px; opacity:.55;
+    }
+    body::after{
+      content:''; position:fixed; top:-15%; left:-10%; width:55vw; height:55vw;
+      background:radial-gradient(circle,rgba(29,78,216,.06),transparent 65%); pointer-events:none;
+    }
+
+    .card{
+      position:relative; z-index:1; background:var(--surface);
+      border:1.5px solid var(--border); border-radius:24px;
+      padding:40px 44px; width:100%; max-width:460px; box-shadow:var(--shadow);
+    }
+    @media(max-width:480px){.card{padding:28px 20px;border-radius:18px;}}
+
+    .logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:26px;}
+    .logo-text{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:21px;
+               letter-spacing:-0.03em;color:var(--text);}
+    .logo-text span{font-weight:400;opacity:.55;}
+    h1{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:24px;
+       letter-spacing:-0.03em;text-align:center;margin-bottom:6px;}
+    .sub{font-size:14px;color:var(--text2);text-align:center;margin-bottom:22px;line-height:1.6;}
+
+    /* Step indicator */
+    .steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:22px;}
+    .step{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;
+          justify-content:center;font-size:12px;font-weight:700;
+          border:2px solid var(--border2);color:var(--text3);background:var(--surface);
+          transition:all .3s;}
+    .step.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+    .step.done{background:var(--success);border-color:var(--success);color:#fff;}
+    .step-line{flex:1;max-width:44px;height:2px;background:var(--border);margin:0 6px;transition:background .3s;}
+    .step-line.done{background:var(--success);}
+
+    .msg{padding:11px 15px;border-radius:10px;font-size:13px;font-weight:500;
+         margin-bottom:14px;display:none;line-height:1.5;}
+    .msg.error  {background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.2);color:var(--danger);}
+    .msg.success{background:rgba(5,150,105,.07);border:1px solid rgba(5,150,105,.2);color:var(--success);}
+    .msg.info   {background:rgba(29,78,216,.07);border:1px solid rgba(29,78,216,.2);color:var(--accent);}
+
+    /* Social button */
+    .btn-google{
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      width:100%;padding:12px;border-radius:12px;font-family:inherit;font-size:14px;
+      font-weight:600;cursor:pointer;transition:all .22s;text-decoration:none;
+      background:#fff;color:#3c4043;border:1.5px solid #dadce0;
+      box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:10px;
+    }
+    .btn-google:hover{background:#f8f9fa;border-color:#c6c9cc;box-shadow:0 2px 8px rgba(0,0,0,.12);}
+    @media(prefers-color-scheme:dark){
+      .btn-google{background:#1f2937;color:#e5e7eb;border-color:rgba(255,255,255,.12);}
+      .btn-google:hover{background:#273145;}
+    }
+
+    .divider{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--text3);font-size:12px;}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+
+    .field{margin-bottom:14px;}
+    label{display:block;font-size:12.5px;font-weight:600;color:var(--text2);margin-bottom:5px;letter-spacing:.01em;}
+    input[type=text],input[type=email],input[type=tel]{
+      width:100%;padding:11px 14px;
+      background:var(--surface2);border:1.5px solid var(--border);
+      border-radius:10px;color:var(--text);font-family:inherit;font-size:14px;
+      outline:none;transition:all .22s;
+    }
+    input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,78,216,.10);background:var(--surface);}
+    input::placeholder{color:var(--text3);}
+    .prefix-wrap{position:relative;}
+    .prefix-wrap input{padding-left:46px;}
+    .prefix{position:absolute;left:13px;top:50%;transform:translateY(-50%);
+            font-size:13.5px;font-weight:600;color:var(--text2);}
+
+    .otp-row{display:flex;gap:9px;justify-content:center;margin:14px 0;}
+    .otp-digit{
+      width:46px;height:52px;text-align:center;font-size:20px;font-weight:700;
+      padding:0;border-radius:11px;letter-spacing:0;
+      background:var(--surface2);border:1.5px solid var(--border);
+      color:var(--text);font-family:inherit;outline:none;transition:all .22s;
+    }
+    .otp-digit:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,78,216,.10);}
+
+    .btn-primary{
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      width:100%;padding:12.5px;background:var(--accent);color:#fff;border:none;
+      border-radius:12px;font-family:inherit;font-size:14.5px;font-weight:700;
+      cursor:pointer;transition:all .25s;letter-spacing:-0.01em;
+    }
+    .btn-primary:hover{opacity:.88;transform:translateY(-1px);}
+    .btn-primary:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+
+    .otp-info{
+      background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+      padding:11px 14px;margin-bottom:14px;font-size:13px;color:var(--text2);
+      line-height:1.6;text-align:center;
+    }
+    .otp-info strong{color:var(--text);}
+
+    .timer{font-size:12px;color:var(--text3);text-align:center;margin-top:10px;}
+    .timer span{font-weight:700;color:var(--accent);}
+    .btn-link{background:none;border:none;color:var(--accent);font-family:inherit;
+              font-size:13px;font-weight:600;cursor:pointer;padding:0;text-decoration:underline;}
+    .foot{text-align:center;margin-top:16px;font-size:13px;color:var(--text3);}
+    .foot a{color:var(--accent);font-weight:600;text-decoration:none;}
+    .hidden{display:none!important;}
+
+    /* Benefits list */
+    .benefits{
+      background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+      padding:12px 14px;margin-bottom:16px;
+    }
+    .benefit-item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);
+                  padding:3px 0;line-height:1.4;}
+    .benefit-item span.ic{font-size:14px;flex-shrink:0;}
+
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <!-- Logo -->
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 34 34" fill="none">
+      <rect width="34" height="34" rx="9" fill="url(#rg)"/>
+      <path d="M6 17C6 17 10 10 17 10C24 10 28 17 28 17S24 24 17 24S6 17 6 17Z"
+            stroke="white" stroke-width="1.4" fill="none" opacity=".7"/>
+      <circle cx="17" cy="17" r="4.5" fill="white" opacity=".95"/>
+      <circle cx="17" cy="17" r="2.2" fill="url(#rg)"/>
+      <circle cx="18.5" cy="15.5" r="1.1" fill="white" opacity=".6"/>
+      <defs><linearGradient id="rg" x1="0" y1="0" x2="34" y2="34">
+        <stop offset="0%" stop-color="#1d4ed8"/><stop offset="50%" stop-color="#6d28d9"/>
+        <stop offset="100%" stop-color="#0e7490"/></linearGradient></defs>
+    </svg>
+    <span class="logo-text">Grivora <span>AI</span></span>
+  </div>
+
+  <h1>Create Account</h1>
+  <p class="sub">Join the AI data intelligence platform</p>
+
+  <!-- Step indicator -->
+  <div class="steps">
+    <div class="step active" id="s1">1</div>
+    <div class="step-line" id="sl1"></div>
+    <div class="step" id="s2">2</div>
+  </div>
+
+  <!-- Alert -->
+  <div id="msg-box" class="msg"></div>
+
+  <!-- ══ STEP 1: Details ══ -->
+  <div id="step1">
+
+    <!-- Google fast-register -->
+    {% if google_ok %}
+    <a href="/auth/google" class="btn-google">
+      <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      Sign up with Google (fastest)
+    </a>
+    <div class="divider">or register with email OTP</div>
+    {% endif %}
+
+    <!-- Benefits -->
+    <div class="benefits">
+      <div class="benefit-item"><span class="ic">📊</span> AI-powered data analysis &amp; charts</div>
+      <div class="benefit-item"><span class="ic">🤖</span> 14 ML models · Auto dashboard · BI Studio</div>
+      <div class="benefit-item"><span class="ic">🔒</span> Your data stays private and secure</div>
+    </div>
+
+    <div class="field">
+      <label>Full Name</label>
+      <input type="text" id="inp-name" placeholder="Your full name" autocomplete="name">
+    </div>
+    <div class="field">
+      <label>Email Address</label>
+      <input type="email" id="inp-email" placeholder="you@gmail.com" autocomplete="email">
+    </div>
+    <div class="field">
+      <label>Mobile Number <span style="color:var(--text3);font-weight:400;">(for SMS OTP fallback)</span></label>
+      <div class="prefix-wrap">
+        <span class="prefix">+91</span>
+        <input type="tel" id="inp-mobile" placeholder="10-digit number" maxlength="10" autocomplete="tel">
+      </div>
+    </div>
+    <button class="btn-primary" id="btn-send" onclick="sendOtp()">
+      Send Verification Code →
+    </button>
+  </div>
+
+  <!-- ══ STEP 2: OTP ══ -->
+  <div id="step2" class="hidden">
+    <div class="otp-info">
+      OTP sent to <strong id="otp-dest"></strong><br>
+      <small style="color:var(--text3);font-size:12px;">
+        Check your email inbox · also check spam folder · allow 30–60 seconds
+      </small>
+    </div>
+    <div class="otp-row">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric" autocomplete="one-time-code">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+    </div>
+    <button class="btn-primary" id="btn-verify" onclick="verifyOtp()" style="margin-bottom:10px;">
+      Create Account →
+    </button>
+    <div class="timer">
+      Didn't get it?
+      <button class="btn-link" id="resend-btn" onclick="resend()" disabled>Resend OTP</button>
+      <span id="timer-disp"></span>
+    </div>
+    <div style="text-align:center;margin-top:10px;">
+      <button class="btn-link" onclick="goBack()" style="color:var(--text3);font-size:12px;">
+        ← Change details
+      </button>
+    </div>
+  </div>
+
+  <div class="foot">Already have an account? <a href="/auth/login">Sign In</a></div>
+</div>
+
+<script>
+let timerInterval;
+const $ = id => document.getElementById(id);
+
+function showMsg(msg, type='error'){
+  const el=$('msg-box'); el.textContent=msg; el.className='msg '+type; el.style.display='block';
+}
+function clearMsg(){ $('msg-box').style.display='none'; }
+
+async function sendOtp(){
+  clearMsg();
+  const name   = $('inp-name').value.trim();
+  const email  = $('inp-email').value.trim();
+  const mobile = $('inp-mobile').value.trim();
+  const btn    = $('btn-send');
+
+  if(!name)  { showMsg('Please enter your full name.'); $('inp-name').focus(); return; }
+  if(!email) { showMsg('Please enter your email address.'); $('inp-email').focus(); return; }
+  if(!mobile){ showMsg('Please enter your 10-digit mobile number.'); $('inp-mobile').focus(); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;"></span> Sending…';
+
+  try{
+    const res  = await fetch('/auth/register/send-otp',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, email, mobile})
+    });
+    const data = await res.json();
+    btn.disabled = false; btn.textContent = 'Send Verification Code →';
+
+    if(!data.ok){ showMsg(data.msg); return; }
+
+    $('otp-dest').textContent = email;
+    $('step1').classList.add('hidden');
+    $('step2').classList.remove('hidden');
+    $('s1').className='step done'; $('s1').textContent='✓';
+    $('sl1').className='step-line done';
+    $('s2').className='step active';
+    showMsg('OTP sent! Check your email inbox (and spam folder).', 'success');
+    startTimer();
+    document.querySelector('.otp-digit').focus();
+  }catch(e){
+    btn.disabled = false; btn.textContent = 'Send Verification Code →';
+    showMsg('Network error. Please try again.');
+  }
+}
+
+async function verifyOtp(){
+  clearMsg();
+  const digits = [...document.querySelectorAll('.otp-digit')].map(i=>i.value).join('');
+  if(digits.length < 6){ showMsg('Please enter all 6 digits.'); return; }
+
+  const btn = $('btn-verify');
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;"></span> Creating account…';
+
+  try{
+    const res  = await fetch('/auth/register/verify-otp',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({otp: digits})
+    });
+    const data = await res.json();
+    btn.disabled = false; btn.textContent = 'Create Account →';
+
+    if(!data.ok){ showMsg(data.msg); return; }
+    showMsg('Account created! Redirecting…', 'success');
+    setTimeout(()=> window.location.href = data.redirect || '/', 1000);
+  }catch(e){
+    btn.disabled = false; btn.textContent = 'Create Account →';
+    showMsg('Network error. Please try again.');
+  }
+}
+
+async function resend(){
+  clearMsg();
+  try{
+    const res  = await fetch('/auth/resend-otp',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ctx:'register'})
+    });
+    const data = await res.json();
+    if(data.ok){ showMsg('OTP resent! Check your inbox.', 'success'); startTimer(); }
+    else showMsg(data.msg);
+  }catch(e){ showMsg('Network error.'); }
+}
+
+function goBack(){
+  $('step2').classList.add('hidden');
+  $('step1').classList.remove('hidden');
+  document.querySelectorAll('.otp-digit').forEach(i=>i.value='');
+  $('s1').className='step active'; $('s1').textContent='1';
+  $('sl1').className='step-line';
+  $('s2').className='step';
+  clearMsg(); clearInterval(timerInterval);
+}
+
+function startTimer(){
+  let sec = 60;
+  const btn=$('resend-btn'), disp=$('timer-disp');
+  btn.disabled = true; disp.innerHTML = `in <span>${sec}s</span>`;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    sec--;
+    if(sec<=0){ clearInterval(timerInterval); btn.disabled=false; disp.textContent=''; }
+    else disp.innerHTML = `in <span>${sec}s</span>`;
+  }, 1000);
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const digits = [...document.querySelectorAll('.otp-digit')];
+  digits.forEach((inp,i)=>{
+    inp.addEventListener('input', e=>{
+      const v=e.target.value.replace(/\D/g,'');
+      e.target.value=v.slice(-1);
+      if(v && i<digits.length-1) digits[i+1].focus();
+    });
+    inp.addEventListener('keydown', e=>{
+      if(e.key==='Backspace' && !e.target.value && i>0) digits[i-1].focus();
+      if(e.key==='Enter') verifyOtp();
+    });
+    inp.addEventListener('paste', e=>{
+      e.preventDefault();
+      const p=(e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'');
+      [...p.slice(0,6)].forEach((ch,j)=>{ if(digits[i+j]) digits[i+j].value=ch; });
+      digits[Math.min(i+p.length,digits.length-1)].focus();
+    });
+  });
+  ['inp-name','inp-email','inp-mobile'].forEach(id=>{
+    $(id)?.addEventListener('keydown', e=>{ if(e.key==='Enter') sendOtp(); });
+  });
+});
+</script>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+</body>
+</html>

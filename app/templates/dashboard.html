@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block head %}
+<style>
+  .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px; transition:all 0.28s ease; }
+  .chart-card:hover { border-color:var(--border2); box-shadow:var(--glow), 0 8px 32px rgba(0,0,0,0.4); }
+  .chart-card h3 { font-family:'Syne',sans-serif; font-size:13px; font-weight:600; color:var(--text2); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.06em; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; text-align:center; transition:all 0.28s ease; position:relative; overflow:hidden; }
+  .stat-card::before { content:''; position:absolute; inset:0; background:radial-gradient(circle at 50% 0%, rgba(56,189,248,0.06), transparent 70%); opacity:0; transition:opacity 0.3s; }
+  .stat-card:hover { border-color:var(--border2); transform:translateY(-3px); box-shadow:var(--glow); }
+  .stat-card:hover::before { opacity:1; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+  <div>
+    <h1 style="margin-bottom:4px;">AI Dashboard</h1>
+    <p id="file-info" style="font-size:13px; color:var(--text2);"></p>
+  </div>
+  <a href="/upload" style="padding:9px 18px; background:var(--surface); border:1px solid var(--border); border-radius:10px; font-size:13px; color:var(--text2); font-family:'DM Sans',sans-serif; transition:all 0.25s;">⬆ Change File</a>
+</div>
+
+<div id="no-file-warning" style="display:none; padding:16px 20px; background:rgba(251,191,36,0.06); border:1px solid rgba(251,191,36,0.2); border-radius:12px; margin-bottom:20px; color:#fbbf24; font-size:14px;">
+  ⚠️ No file uploaded. <a href="/upload">Upload a file to see charts →</a>
+</div>
+
+<div id="col-badges" style="display:none; margin-bottom:18px; padding:12px 16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; font-size:12px; line-height:2;"></div>
+
+<div id="loading-charts" style="display:none; text-align:center; padding:80px 20px; color:var(--text2);">
+  <div style="font-size:44px; margin-bottom:16px; animation:float 2s ease-in-out infinite;">📊</div>
+  <div style="font-size:15px;">Analyzing your data and building charts...</div>
+</div>
+
+<!-- Summary Cards -->
+<div id="summary-cards" style="display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:24px;"></div>
+
+<!-- Charts -->
+<div id="charts-area"></div>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+const COLORS = ['#38bdf8','#34d399','#818cf8','#fbbf24','#f87171','#fb923c','#a78bfa','#2dd4bf','#f472b6','#60a5fa'];
+const cfg = { responsive:true, displayModeBar:false };
+
+const darkLayout = (extra={}) => ({
+  margin: { t:10, b:50, l:55, r:20 },
+  height: 290,
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor: 'rgba(0,0,0,0)',
+  font: { size:11, color:'#8fa3c8', family:'DM Sans,sans-serif' },
+  xaxis: { gridcolor:'rgba(99,179,237,0.07)', linecolor:'rgba(99,179,237,0.1)', tickfont:{color:'#8fa3c8'}, titlefont:{color:'#8fa3c8'}, ...(extra.xaxis||{}) },
+  yaxis: { gridcolor:'rgba(99,179,237,0.07)', linecolor:'rgba(99,179,237,0.1)', tickfont:{color:'#8fa3c8'}, titlefont:{color:'#8fa3c8'}, ...(extra.yaxis||{}) },
+  legend: { font:{color:'#8fa3c8'}, bgcolor:'rgba(0,0,0,0)', ...(extra.legend||{}) },
+  colorway: COLORS,
+  ...extra
+});
+
+function show(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'block';
+}
+
+function chartCard(id, title, fullWidth=false) {
+  const div = document.createElement('div');
+  div.className = 'chart-card';
+  div.innerHTML = `<h3>${title}</h3><div id="${id}"></div>`;
+  return div;
+}
+
+function row(cards, cols='1fr 1fr') {
+  const div = document.createElement('div');
+  div.style.cssText = `display:grid; grid-template-columns:${cols}; gap:18px; margin-bottom:18px;`;
+  cards.forEach(c => div.appendChild(c));
+  return div;
+}
+
+async function initDashboard() {
+  const sr = await fetch('/api/session-file');
+  const sd = await sr.json();
+
+  if (!sd.file_path) {
+    document.getElementById('no-file-warning').style.display = 'block';
+    return;
+  }
+
+  const name = sd.file_path.replace(/\\/g,'/').split('/').pop();
+  document.getElementById('file-info').innerHTML = `📂 <strong style="color:var(--text);">${name}</strong>`;
+  document.getElementById('loading-charts').style.display = 'block';
+
+  try {
+    const res = await fetch('/api/chart-data', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ file_path: sd.file_path })
+    });
+    const data = await res.json();
+    document.getElementById('loading-charts').style.display = 'none';
+
+    if (data.error) {
+      document.getElementById('loading-charts').style.display = 'block';
+      document.getElementById('loading-charts').innerHTML = `<div style="color:#f87171;">❌ ${data.error}</div>`;
+      return;
+    }
+
+    // Detected columns
+    if (data.detected_columns) {
+      const badges = Object.entries(data.detected_columns)
+        .filter(([k,v]) => v && k !== 'cat2')
+        .map(([k,v]) => `<span style="background:rgba(56,189,248,0.1);color:#38bdf8;border:1px solid rgba(56,189,248,0.2);padding:2px 10px;border-radius:10px;margin:2px;display:inline-block;"><span style="color:var(--text3);">${k}:</span> <strong>${v}</strong></span>`)
+        .join('');
+      document.getElementById('col-badges').innerHTML = `🔍 <span style="color:var(--text2);font-weight:500;">Auto-detected:</span> ${badges}`;
+      document.getElementById('col-badges').style.display = 'block';
+    }
+
+    renderSummary(data.summary);
+    buildCharts(data);
+
+  } catch(e) {
+    document.getElementById('loading-charts').innerHTML = `<div style="color:#f87171;">❌ ${e.message}</div>`;
+  }
+}
+
+function renderSummary(s) {
+  if (!s) return;
+  const fmt = n => Number(n).toLocaleString('en-IN', { maximumFractionDigits:0 });
+  const cards = [
+    { icon:'📋', label:'Total Records',  value:fmt(s.records),            color:'#38bdf8' },
+    { icon:'📊', label:'Total Columns',  value:s.columns,                  color:'#818cf8' },
+    { icon:'💰', label:s.value_label||'Total Value', value:fmt(s.total),   color:'#34d399' },
+    { icon:'📈', label:'Average',        value:fmt(s.avg),                  color:'#fbbf24' },
+    { icon:'🔢', label:s.qty_label||'Quantity', value:fmt(s.qty_total||0), color:'#fb923c' },
+  ];
+  document.getElementById('summary-cards').innerHTML = cards.map(c => `
+    <div class="stat-card">
+      <div style="font-size:22px; margin-bottom:8px;">${c.icon}</div>
+      <div style="font-size:20px; font-weight:700; color:${c.color}; font-family:'Syne',sans-serif; margin-bottom:4px;">${c.value}</div>
+      <div style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.06em;">${c.label}</div>
+    </div>`).join('');
+}
+
+function buildCharts(data) {
+  const area = document.getElementById('charts-area');
+
+  const r1 = [];
+  if (data.time_series) r1.push(chartCard('c-trend', `📈 ${data.time_series.y_label} Over Time`));
+  if (data.bar_chart)   r1.push(chartCard('c-bar',   `🏷 ${data.bar_chart.y_label} by ${data.bar_chart.x_label}`));
+  if (r1.length) area.appendChild(row(r1, r1.length===2?'1fr 1fr':'1fr'));
+
+  const r2 = [];
+  if (data.pie_chart)  r2.push(chartCard('c-pie',  `🥧 ${data.pie_chart.label}`));
+  if (data.histogram)  r2.push(chartCard('c-hist', `📊 Distribution: ${data.histogram.label}`));
+  if (r2.length) area.appendChild(row(r2, r2.length===2?'1fr 1fr':'1fr'));
+
+  const r3 = [];
+  if (data.grouped_bar) r3.push(chartCard('c-grouped', `📊 ${data.grouped_bar.y_label} by Group`));
+  if (data.treemap)     r3.push(chartCard('c-treemap', `🗺 Hierarchical Breakdown`));
+  if (r3.length) area.appendChild(row(r3, r3.length===2?'1fr 1fr':'1fr'));
+
+  if (data.scatter) {
+    const c = chartCard('c-scatter', `🔵 ${data.scatter.x_label} vs ${data.scatter.y_label}`);
+    c.style.marginBottom = '18px';
+    area.appendChild(c);
+  }
+
+  const r5 = [];
+  if (data.heatmap)  r5.push(chartCard('c-heat', `🌡 Correlation Heatmap`));
+  if (data.box_plot) r5.push(chartCard('c-box',  `📦 Box Plot`));
+  if (r5.length) area.appendChild(row(r5, r5.length===2?'1fr 1fr':'1fr'));
+
+  requestAnimationFrame(() => {
+    if (data.time_series) Plotly.newPlot('c-trend', [{
+      x:data.time_series.x, y:data.time_series.y, type:'scatter', mode:'lines+markers',
+      line:{color:'#38bdf8',width:2}, marker:{color:'#38bdf8',size:5},
+      fill:'tozeroy', fillcolor:'rgba(56,189,248,0.06)'
+    }], darkLayout({ xaxis:{title:data.time_series.x_label}, yaxis:{title:data.time_series.y_label} }), cfg);
+
+    if (data.bar_chart) Plotly.newPlot('c-bar', [{
+      x:data.bar_chart.x, y:data.bar_chart.y, type:'bar',
+      marker:{ color:data.bar_chart.x.map((_,i)=>COLORS[i%COLORS.length]), opacity:0.9 }
+    }], darkLayout({ xaxis:{title:'',tickangle:-30}, yaxis:{title:data.bar_chart.y_label} }), cfg);
+
+    if (data.pie_chart) Plotly.newPlot('c-pie', [{
+      labels:data.pie_chart.labels, values:data.pie_chart.values, type:'pie', hole:0.42,
+      marker:{colors:COLORS}, textinfo:'label+percent',
+      textfont:{color:'#e2eaf8',size:11}
+    }], { ...darkLayout(), showlegend:true, legend:{orientation:'v',x:1,y:0.5,font:{color:'#8fa3c8'}} }, cfg);
+
+    if (data.histogram) Plotly.newPlot('c-hist', [{
+      x:data.histogram.x, y:data.histogram.y, type:'bar',
+      marker:{color:'#818cf8', opacity:0.85}
+    }], darkLayout({ xaxis:{title:data.histogram.label}, yaxis:{title:'Frequency'}, bargap:0.04 }), cfg);
+
+    if (data.grouped_bar) {
+      const traces = data.grouped_bar.data.map((g,i) => ({
+        name:g.group, type:'bar', x:data.grouped_bar.cats, y:g.values,
+        marker:{color:COLORS[i%COLORS.length]}
+      }));
+      Plotly.newPlot('c-grouped', traces, darkLayout({ barmode:'group', xaxis:{tickangle:-30}, yaxis:{title:data.grouped_bar.y_label} }), cfg);
+    }
+
+    if (data.treemap) Plotly.newPlot('c-treemap', [{
+      type:'treemap', labels:data.treemap.labels, parents:data.treemap.parents, values:data.treemap.values,
+      textinfo:'label+value+percent parent',
+      marker:{ colorscale:[[0,'#0d1425'],[0.5,'#0ea5e9'],[1,'#38bdf8']] }
+    }], darkLayout(), cfg);
+
+    if (data.scatter) Plotly.newPlot('c-scatter', [{
+      x:data.scatter.x, y:data.scatter.y, mode:'markers', type:'scatter', text:data.scatter.labels,
+      marker:{ color:data.scatter.color, colorscale:'Viridis', size:9, opacity:0.8,
+        colorbar:{title:data.scatter.color_label||'', thickness:10, tickfont:{color:'#8fa3c8'}} }
+    }], darkLayout({ height:320, xaxis:{title:data.scatter.x_label}, yaxis:{title:data.scatter.y_label} }), cfg);
+
+    if (data.heatmap) Plotly.newPlot('c-heat', [{
+      z:data.heatmap.z, x:data.heatmap.x, y:data.heatmap.y, type:'heatmap',
+      colorscale:[[0,'#2563eb'],[0.5,'#0d1425'],[1,'#dc2626']],
+      zmid:0, text:data.heatmap.z.map(r=>r.map(v=>v.toFixed(2))), texttemplate:'%{text}', showscale:true,
+      colorbar:{tickfont:{color:'#8fa3c8'}}
+    }], darkLayout({ height:320 }), cfg);
+
+    if (data.box_plot) {
+      const traces = data.box_plot.cols.map((col,i) => ({
+        y:data.box_plot.data[col], type:'box', name:col,
+        marker:{color:COLORS[i%COLORS.length]}, line:{color:COLORS[i%COLORS.length]}
+      }));
+      Plotly.newPlot('c-box', traces, darkLayout({ height:320, showlegend:false }), cfg);
+    }
+  });
+}
+
+initDashboard();
+</script>
+{% endblock %}

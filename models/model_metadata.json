@@ -1,0 +1,733 @@
+[
+  {
+    "algo_id": "lightgbm_reg",
+    "algo_name": "LightGBM",
+    "task": "regression",
+    "problem_type": "regression",
+    "target_col": "Total_Sales",
+    "feature_names": [
+      "Order_ID",
+      "Order_Date",
+      "Delivery_Date",
+      "Customer_ID",
+      "Customer_City",
+      "Product_Category",
+      "Product_Name",
+      "Price",
+      "Quantity",
+      "Discount (%)",
+      "Payment_Method",
+      "Order_Status",
+      "Rating"
+    ],
+    "metrics": {
+      "rmse": 12249.5881,
+      "mae": 7910.398,
+      "r2": 0.9473,
+      "mape": 11.2
+    },
+    "cv_metrics": {
+      "r2": {
+        "mean": 0.9589,
+        "std": 0.0137,
+        "folds": [
+          0.9523,
+          0.9782,
+          0.9571,
+          0.9382,
+          0.9685
+        ]
+      }
+    },
+    "is_imbalanced": false,
+    "model_path": "models/pma_lightgbm_reg_20260618_165103.pkl",
+    "saved_at": "20260618_165103",
+    "n_train": 160,
+    "n_test": 40
+  },
+  {
+    "algo_id": "lightgbm_reg",
+    "algo_name": "LightGBM",
+    "task": "regression",
+    "problem_type": "regression",
+    "target_col": "Total_Sales",
+    "feature_names": [
+      "Order_ID",
+      "Order_Date",
+      "Delivery_Date",
+      "Customer_ID",
+      "Customer_City",
+      "Product_Category",
+      "Product_Name",
+      "Price",
+      "Quantity",
+      "Discount (%)",
+      "Payment_Method",
+      "Order_Status",
+      "Rating"
+    ],
+    "metrics": {
+      "rmse": 12249.5881,
+      "mae": 7910.398,
+      "r2": 0.9473,
+      "mape": 11.2
+    },
+    "cv_metrics": {
+      "r2": {
+        "mean": 0.9589,
+        "std": 0.0137,
+        "folds": [
+          0.9523,
+          0.9782,
+          0.9571,
+          0.9382,
+          0.9685
+        ]
+      }
+    },
+    "is_imbalanced": false,
+    "model_path": "models/pma_lightgbm_reg_20260608_152541.pkl",
+    "saved_at": "20260608_152541",
+    "n_train": 160,
+    "n_test": 40
+  },
+  {
+    "algo_id": "lightgbm_reg",
+    "algo_name": "LightGBM",
+    "task": "regression",
+    "problem_type": "regression",
+    "target_col": "Total_Sales",
+    "feature_names": [
+      "Order_ID",
+      "Order_Date",
+      "Delivery_Date",
+      "Customer_ID",
+      "Customer_City",
+      "Product_Category",
+      "Product_Name",
+      "Price",
+      "Quantity",
+      "Discount (%)",
+      "Payment_Method",
+      "Order_Status",
+      "Rating"
+    ],
+    "metrics": {
+      "rmse": 12249.5881,
+      "mae": 7910.398,
+      "r2": 0.9473,
+      "mape": 11.2
+    },
+    "cv_metrics": {
+      "r2": {
+        "mean": 0.9589,
+        "std": 0.0137,
+        "folds": [
+          0.9523,
+          0.9782,
+          0.9571,
+          0.9382,
+          0.9685
+        ]
+      }
+    },
+    "is_imbalanced": false,
+    "model_path": "models/pma_lightgbm_reg_20260607_113335.pkl",
+    "saved_at": "20260607_113335",
+    "n_train": 160,
+    "n_test": 40
+  },
+  {
+    "algo_id": "lightgbm_reg",
+    "algo_name": "LightGBM",
+    "task": "regression",
+    "problem_type": "regression",
+    "target_col": "Total_Sales",
+    "feature_names": [
+      "Order_ID",
+      "Order_Date",
+      "Delivery_Date",
+      "Customer_ID",
+      "Customer_City",
+      "Product_Category",
+      "Product_Name",
+      "Price",
+      "Quantity",
+      "Discount (%)",
+      "Payment_Method",
+      "Order_Status",
+      "Rating"
+    ],
+    "metrics": {
+      "rmse": 12249.5881,
+      "mae": 7910.398,
+      "r2": 0.9473,
+      "mape": 11.2
+    },
+    "cv_metrics": {
+      "r2": {
+        "mean": 0.9589,
+        "std": 0.0137,
+        "folds": [
+          0.9523,
+          0.9782,
+          0.9571,
+          0.9382,
+          0.9685
+        ]
+      }
+    },
+    "is_imbalanced": false,
+    "model_path": "models/pma_lightgbm_reg_20260606_222026.pkl",
+    "saved_at": "20260606_222026",
+    "n_train": 160,
+    "n_test": 40
+  },
+  {
+    "algo_id": "lightgbm_reg",
+    "algo_name": "LightGBM",
+    "task": "regression",
+    "problem_type": "regression",
+    "target_col": "Sales_Amount",
+    "feature_names": [
+      "Product_ID",
+      "Sale_Date",
+      "Sales_Rep",
+      "Region",
+      "Quantity_Sold",
+      "Product_Category",
+      "Unit_Cost",
+      "Unit_Price",
+      "Customer_Type",
+      "Discount",
+      "Payment_Method",
+      "Sales_Channel",
+      "Region_and_Sales_Rep"
+    ],
+    "metrics": {
+      "rmse": 3375.4307,
+      "mae": 2862.7723,
+      "r2": -0.2329,
+      "mape": 219.89
+    },
+    "cv_metrics": {
+      "r2": {
+        "mean": -0.2522,
+        "std": 0.1561,
+        "folds": [
+          0.0308,
+          -0.4458,
+          -0.3008,
+          -0.2493,
+          -0.2962
+        ]
+      }
+    },
+    "is_imbalanced": false,
+    "model_path": "models/pma_lightgbm_reg_20260426_111738.pkl",
+    "saved_at": "20260426_111738",
+    "n_train": 800,
+    "n_test": 200
+  },
+  {
+    "algo_id": "knn_clf",
+    "algo_name": "KNN Classifier",
+    "task": "classification",
+    "problem_type": "classification",
+    "target_col": "Product_Category",
+    "feature_names": [
+      "Order_ID",
+      "Order_Date",
+      "Delivery_Date",
+      "Customer_ID",
+      "Customer_City",
+      "Product_Name",
+      "Price",
+      "Quantity",
+      "Total_Sales",
+      "Discount (%)",
+      "Payment_Method",
+      "Order_Status",
+      "Rating"
+    ],
+    "metrics": {
+      "accuracy": 0.075,
+      "balanced_accuracy": 0.075,
+      "precision": 0.0311,
+      "recall": 0.075,
+      "f1": 0.044,
+      "f1_macro": 0.044,
+      "confusion_matrix": [
+        [
+          0,
+          4,
+          3,
+          0,
+          0
+        ],
+        [
+          0,
+          2,
+          5,
+          1,
+          0
+        ],
+        [
+          0,
+          7,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          5,
+          4,
+          0,
+          0
+        ],
+        [
+          1,
+          2,
+          5,
+          0,
+          0
+        ]
+      ],
+      "n_classes": 5
+    },
+    "cv_metrics": {
+      "f1_weighted": {
+        "mean": 0.1132,
+        "std": 0.0184,
+        "folds": [
+          0.1334,
+          0.0934,
+          0.1155,
+          0.1328,
+          0.0906
+        ]
+      }
+    },
+    "is_imbalanced": false,
+    "model_path": "models/pma_knn_clf_20260424_221920.pkl",
+    "saved_at": "20260424_221920",
+    "n_train": 160,
+    "n_test": 40
+  },
+  {
+    "algo_id": "catboost_reg",
+    "algo_name": "CatBoost",
+    "task": "regression",
+    "problem_type": "regression",
+    "target_col": "Sales_Amount",
+    "feature_names": [
+      "Product_ID",
+      "Sale_Date",
+      "Sales_Rep",
+      "Region",
+      "Quantity_Sold",
+      "Product_Category",
+      "Unit_Cost",
+      "Unit_Price",
+      "Customer_Type",
+      "Discount",
+      "Payment_Method",
+      "Sales_Channel",
+      "Region_and_Sales_Rep"
+    ],
+    "metrics": {
+      "rmse": 3267.0927,
+      "mae": 2810.2288,
+      "r2": -0.155,
+      "mape": 218.18
+    },
+    "cv_metrics": {
+      "r2": {
+        "mean": -0.1727,
+        "std": 0.0801,
+        "folds": [
+          -0.0288,
+          -0.2613,
+          -0.2175,
+          -0.1513,
+          -0.2046
+        ]
+      }
+    },
+    "is_imbalanced": false,
+    "model_path": "models/pma_catboost_reg_20260424_215347.pkl",
+    "saved_at": "20260424_215347",
+    "n_train": 800,
+    "n_test": 200
+  },
+  {
+    "algo_id": "random_forest_reg",
+    "algo_name": "Random Forest",
+    "task": "regression",
+    "problem_type": "regression",
+    "target_col": "Sales_Amount",
+    "feature_names": [
+      "Product_ID",
+      "Sale_Date",
+      "Sales_Rep",
+      "Region",
+      "Quantity_Sold",
+      "Product_Category",
+      "Unit_Cost",
+      "Unit_Price",
+      "Customer_Type",
+      "Discount",
+      "Payment_Method",
+      "Sales_Channel",
+      "Region_and_Sales_Rep"
+    ],
+    "metrics": {
+      "rmse": 3158.1916,
+      "mae": 2775.7275,
+      "r2": -0.0793,
+      "mape": 204.95
+    },
+    "cv_metrics": {
+      "r2": {
+        "mean": -0.075,
+        "std": 0.0515,
+        "folds": [
+          0.0255,
+          -0.0983,
+          -0.12,
+          -0.0869,
+          -0.0956
+        ]
+      }
+    },
+    "is_imbalanced": false,
+    "model_path": "models/pma_random_forest_reg_20260424_215227.pkl",
+    "saved_at": "20260424_215227",
+    "n_train": 800,
+    "n_test": 200
+  },
+  {
+    "algo_id": "catboost_reg",
+    "algo_name": "CatBoost",
+    "task": "regression",
+    "problem_type": "regression",
+    "target_col": "Sales_Amount",
+    "feature_names": [
+      "Product_ID",
+      "Sale_Date",
+      "Sales_Rep",
+      "Region",
+      "Quantity_Sold",
+      "Product_Category",
+      "Unit_Cost",
+      "Unit_Price",
+      "Customer_Type",
+      "Discount",
+      "Payment_Method",
+      "Sales_Channel",
+      "Region_and_Sales_Rep"
+    ],
+    "metrics": {
+      "rmse": 3267.0927,
+      "mae": 2810.2288,
+      "r2": -0.155,
+      "mape": 218.18
+    },
+    "cv_metrics": {
+      "r2": {
+        "mean": -0.1727,
+        "std": 0.0801,
+        "folds": [
+          -0.0288,
+          -0.2613,
+          -0.2175,
+          -0.1513,
+          -0.2046
+        ]
+      }
+    },
+    "is_imbalanced": false,
+    "model_path": "models/pma_catboost_reg_20260424_215205.pkl",
+    "saved_at": "20260424_215205",
+    "n_train": 800,
+    "n_test": 200
+  },
+  {
+    "algo_id": "lightgbm_reg",
+    "algo_name": "LightGBM",
+    "task": "regression",
+    "problem_type": "regression",
+    "target_col": "Sales_Amount",
+    "feature_names": [
+      "Product_ID",
+      "Sale_Date",
+      "Sales_Rep",
+      "Region",
+      "Quantity_Sold",
+      "Product_Category",
+      "Unit_Cost",
+      "Unit_Price",
+      "Customer_Type",
+      "Discount",
+      "Payment_Method",
+      "Sales_Channel",
+      "Region_and_Sales_Rep"
+    ],
+    "metrics": {
+      "rmse": 3375.4307,
+      "mae": 2862.7723,
+      "r2": -0.2329,
+      "mape": 219.89
+    },
+    "cv_metrics": {
+      "r2": {
+        "mean": -0.2522,
+        "std": 0.1561,
+        "folds": [
+          0.0308,
+          -0.4458,
+          -0.3008,
+          -0.2493,
+          -0.2962
+        ]
+      }
+    },
+    "is_imbalanced": false,
+    "model_path": "models/pma_lightgbm_reg_20260424_215205.pkl",
+    "saved_at": "20260424_215205",
+    "n_train": 800,
+    "n_test": 200
+  },
+  {
+    "algo_id": "random_forest_reg",
+    "algo_name": "Random Forest",
+    "task": "regression",
+    "problem_type": "regression",
+    "target_col": "Sales_Amount",
+    "feature_names": [
+      "Product_ID",
+      "Sale_Date",
+      "Sales_Rep",
+      "Region",
+      "Quantity_Sold",
+      "Product_Category",
+      "Unit_Cost",
+      "Unit_Price",
+      "Customer_Type",
+      "Discount",
+      "Payment_Method",
+      "Sales_Channel",
+      "Region_and_Sales_Rep"
+    ],
+    "metrics": {
+      "rmse": 3158.1916,
+      "mae": 2775.7275,
+      "r2": -0.0793,
+      "mape": 204.95
+    },
+    "cv_metrics": {
+      "r2": {
+        "mean": -0.075,
+        "std": 0.0515,
+        "folds": [
+          0.0255,
+          -0.0983,
+          -0.12,
+          -0.0869,
+          -0.0956
+        ]
+      }
+    },
+    "is_imbalanced": false,
+    "model_path": "models/pma_random_forest_reg_20260424_215204.pkl",
+    "saved_at": "20260424_215204",
+    "n_train": 800,
+    "n_test": 200
+  },
+  {
+    "model_key": "random_forest",
+    "model_name": "Random Forest",
+    "target_col": "Sales_Amount",
+    "feature_names": [
+      "Product_ID",
+      "Sales_Rep",
+      "Region",
+      "Quantity_Sold",
+      "Product_Category",
+      "Unit_Cost",
+      "Unit_Price",
+      "Customer_Type",
+      "Discount",
+      "Payment_Method",
+      "Sales_Channel",
+      "Region_and_Sales_Rep",
+      "Sales_Amount_lag_1",
+      "Sales_Amount_lag_2",
+      "Sales_Amount_lag_3",
+      "Sales_Amount_lag_4",
+      "Sales_Amount_lag_5",
+      "month",
+      "dayofweek",
+      "quarter"
+    ],
+    "problem_type": "regression",
+    "data_type": "time_series",
+    "metrics": {
+      "rmse": 2801.1203,
+      "mae": 2367.9129,
+      "r2": -0.0524,
+      "mape": 176.61
+    },
+    "model_path": "models/pma_random_forest_20260418_130003.pkl",
+    "saved_at": "20260418_130003"
+  },
+  {
+    "model_key": "linear_regression",
+    "model_name": "Linear Regression",
+    "target_col": "Sales_Amount",
+    "feature_names": [
+      "Product_ID",
+      "Sales_Rep",
+      "Region",
+      "Quantity_Sold",
+      "Product_Category",
+      "Unit_Cost",
+      "Unit_Price",
+      "Customer_Type",
+      "Discount",
+      "Payment_Method",
+      "Sales_Channel",
+      "Region_and_Sales_Rep",
+      "Sales_Amount_lag_1",
+      "Sales_Amount_lag_2",
+      "Sales_Amount_lag_3",
+      "Sales_Amount_lag_4",
+      "Sales_Amount_lag_5",
+      "month",
+      "dayofweek",
+      "quarter"
+    ],
+    "problem_type": "regression",
+    "data_type": "time_series",
+    "metrics": {
+      "rmse": 2796.2522,
+      "mae": 2383.6487,
+      "r2": -0.0488,
+      "mape": 173.75
+    },
+    "model_path": "models/pma_linear_regression_20260416_112146.pkl",
+    "saved_at": "20260416_112146"
+  },
+  {
+    "model_key": "linear_regression",
+    "model_name": "Linear Regression",
+    "target_col": "Sales_Amount",
+    "feature_names": [
+      "Product_ID",
+      "Sales_Rep",
+      "Region",
+      "Quantity_Sold",
+      "Product_Category",
+      "Unit_Cost",
+      "Unit_Price",
+      "Customer_Type",
+      "Discount",
+      "Payment_Method",
+      "Sales_Channel",
+      "Region_and_Sales_Rep",
+      "Sales_Amount_lag_1",
+      "Sales_Amount_lag_2",
+      "Sales_Amount_lag_3",
+      "Sales_Amount_lag_4",
+      "Sales_Amount_lag_5",
+      "month",
+      "dayofweek",
+      "quarter"
+    ],
+    "problem_type": "regression",
+    "data_type": "time_series",
+    "metrics": {
+      "rmse": 2796.2522,
+      "mae": 2383.6487,
+      "r2": -0.0488,
+      "mape": 173.75
+    },
+    "model_path": "models/pma_linear_regression_20260413_114739.pkl",
+    "saved_at": "20260413_114739"
+  },
+  {
+    "model_key": "random_forest",
+    "model_name": "Random Forest",
+    "target_col": "Sales_Amount",
+    "feature_names": [
+      "Product_ID",
+      "Sales_Rep",
+      "Region",
+      "Quantity_Sold",
+      "Product_Category",
+      "Unit_Cost",
+      "Unit_Price",
+      "Customer_Type",
+      "Discount",
+      "Payment_Method",
+      "Sales_Channel",
+      "Region_and_Sales_Rep",
+      "Sales_Amount_lag_1",
+      "Sales_Amount_lag_2",
+      "Sales_Amount_lag_3",
+      "Sales_Amount_lag_4",
+      "Sales_Amount_lag_5",
+      "month",
+      "dayofweek",
+      "quarter"
+    ],
+    "problem_type": "regression",
+    "data_type": "time_series",
+    "metrics": {
+      "rmse": 2801.1203,
+      "mae": 2367.9129,
+      "r2": -0.0524,
+      "mape": 176.61
+    },
+    "model_path": "models/pma_random_forest_20260404_181158.pkl",
+    "saved_at": "20260404_181158"
+  },
+  {
+    "model_key": "random_forest",
+    "model_name": "Random Forest",
+    "target_col": "Sales_Amount",
+    "feature_names": [
+      "Product_ID",
+      "Sales_Rep",
+      "Region",
+      "Quantity_Sold",
+      "Product_Category",
+      "Unit_Cost",
+      "Unit_Price",
+      "Customer_Type",
+      "Discount",
+      "Payment_Method",
+      "Sales_Channel",
+      "Region_and_Sales_Rep",
+      "Sales_Amount_lag_1",
+      "Sales_Amount_lag_2",
+      "Sales_Amount_lag_3",
+      "Sales_Amount_lag_4",
+      "Sales_Amount_lag_5",
+      "month",
+      "dayofweek",
+      "quarter"
+    ],
+    "problem_type": "regression",
+    "data_type": "time_series",
+    "metrics": {
+      "rmse": 2801.1203,
+      "mae": 2367.9129,
+      "r2": -0.0524,
+      "mape": 176.61
+    },
+    "model_path": "models/pma_random_forest_20260403_142804.pkl",
+    "saved_at": "20260403_142804"
+  }
+]

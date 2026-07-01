@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}AI Data Chat — DataPulse AI{% endblock %}
+{% block content %}
+
+<div style="max-width:900px; margin:0 auto; padding: 20px 0 60px;">
+
+  <!-- Back + Header -->
+  <div style="display:flex; align-items:center; gap:14px; margin-bottom:24px;">
+    <a href="/analysis" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--surface);border:1px solid var(--border2);border-radius:9px;font-size:13px;color:var(--text2);font-family:'Instrument Sans',sans-serif;transition:all 0.22s;">
+      ← Back
+    </a>
+    <div>
+      <h1 style="font-size:24px;margin-bottom:2px;">AI Data Chat</h1>
+      <p style="font-size:13px;color:var(--text2);">Powered by Gemini 2.5 Flash — reads your actual data</p>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div id="file-badge" style="display:none;" class="badge badge-blue" style="font-size:11px;"></div>
+      <!-- DATA PREVIEW BUTTON -->
+      <a id="preview-btn" href="/data-preview" style="display:none;align-items:center;gap:7px;padding:9px 18px;background:var(--accent);color:#fff;font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:13px;border-radius:10px;text-decoration:none;box-shadow:0 4px 14px rgba(37,99,235,0.28);transition:all 0.25s;">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="2" width="13" height="11" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M1 5.5h13" stroke="currentColor" stroke-width="1.2"/><path d="M5 5.5v7.5" stroke="currentColor" stroke-width="1.2"/></svg>
+        Data Preview
+      </a>
+    </div>
+  </div>
+
+  <!-- No file warning -->
+  <div id="no-file-warning" style="display:none;padding:14px 18px;background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.25);border-radius:12px;margin-bottom:16px;font-size:14px;color:var(--warning);">
+    ⚠️ No file uploaded. <a href="/upload">Upload a file first →</a>
+  </div>
+
+  <!-- Chat window -->
+  <div id="chat-box" style="height:500px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px;display:flex;flex-direction:column;gap:16px;margin-bottom:16px;scroll-behavior:smooth;">
+    <div id="welcome-msg" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;gap:14px;">
+      <div style="width:56px;height:56px;background:var(--surface2);border:1px solid var(--border2);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;animation:float 3s ease-in-out infinite;">🤖</div>
+      <div style="font-size:16px;color:var(--text);font-weight:600;font-family:'Cabinet Grotesk',sans-serif;">Ask me anything about your data</div>
+      <div style="font-size:13px;color:var(--text3);max-width:380px;line-height:1.7;">Try asking column names, statistics, missing values, or chart suggestions.</div>
+    </div>
+  </div>
+
+  <!-- Quick prompts -->
+  <div id="quick-prompts" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+    {% for p in ['What are the columns?','Show missing values','Summarize the data','Suggest charts','Clean this data','Predict with ML'] %}
+    <button onclick="quickSend('{{ p }}')" style="padding:7px 15px;font-size:12px;font-weight:500;background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--text2);transition:all 0.22s;font-family:'Instrument Sans',sans-serif;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)';this.style.background='rgba(37,99,235,0.05)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)';this.style.background='var(--surface)'">{{ p }}</button>
+    {% endfor %}
+  </div>
+
+  <!-- Input -->
+  <div style="display:flex;gap:10px;">
+    <input type="text" id="user-input" placeholder="Ask anything about your data..." style="flex:1;padding:13px 18px;border-radius:12px;font-size:14px;">
+    <button onclick="sendMessage()" style="padding:13px 26px;border-radius:12px;font-size:14px;white-space:nowrap;font-family:'Instrument Sans',sans-serif;">Send ➤</button>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+let activeFilePath = '';
+
+async function initChat() {
+  const res = await fetch('/api/session-file');
+  const data = await res.json();
+  if (data.file_path) {
+    activeFilePath = data.file_path;
+    const name = data.file_path.replace(/\\/g,'/').split('/').pop();
+    const badge = document.getElementById('file-badge');
+    badge.style.display = 'inline-flex';
+    badge.textContent = name.toUpperCase();
+    const previewBtn = document.getElementById('preview-btn');
+    previewBtn.style.display = 'inline-flex';
+  } else {
+    document.getElementById('no-file-warning').style.display = 'block';
+  }
+}
+initChat();
+
+function removeWelcome() {
+  document.getElementById('welcome-msg')?.remove();
+  document.getElementById('quick-prompts').style.display = 'none';
+}
+
+function appendMsg(role, content) {
+  removeWelcome();
+  const box = document.getElementById('chat-box');
+  const wrap = document.createElement('div');
+  wrap.style.cssText = `display:flex;flex-direction:column;align-items:${role==='user'?'flex-end':'flex-start'};animation:fadeUp 0.3s ease both;`;
+  const bubble = document.createElement('div');
+  if (role === 'user') {
+    bubble.style.cssText = `background:var(--accent);color:#fff;padding:12px 18px;border-radius:18px 18px 4px 18px;font-size:14px;max-width:70%;font-weight:500;`;
+    bubble.textContent = content;
+  } else {
+    bubble.style.cssText = `background:var(--surface2);border:1px solid var(--border);padding:16px 18px;border-radius:4px 18px 18px 18px;font-size:14px;max-width:86%;line-height:1.75;color:var(--text);`;
+    bubble.innerHTML = marked.parse(content);
+    bubble.querySelectorAll('pre').forEach(p => { p.style.cssText='background:var(--bg2);padding:14px;border-radius:8px;overflow-x:auto;font-size:12px;margin:10px 0;border:1px solid var(--border);'; });
+    bubble.querySelectorAll('code:not(pre code)').forEach(c => { c.style.cssText='background:var(--bg2);padding:2px 6px;border-radius:4px;font-size:12px;color:var(--accent);'; });
+  }
+  wrap.appendChild(bubble);
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+}
+
+function appendLoading() {
+  const box = document.getElementById('chat-box');
+  const div = document.createElement('div');
+  div.id = 'loading-bubble';
+  div.innerHTML = `<div style="display:flex;gap:5px;padding:14px 18px;background:var(--surface2);border:1px solid var(--border);border-radius:4px 18px 18px 18px;">
+    <span style="width:7px;height:7px;background:var(--accent);border-radius:50%;animation:pulse-ring 0.9s ease infinite;display:inline-block;"></span>
+    <span style="width:7px;height:7px;background:var(--accent);border-radius:50%;animation:pulse-ring 0.9s ease 0.2s infinite;display:inline-block;"></span>
+    <span style="width:7px;height:7px;background:var(--accent);border-radius:50%;animation:pulse-ring 0.9s ease 0.4s infinite;display:inline-block;"></span>
+  </div>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('user-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  appendMsg('user', msg);
+  input.value = '';
+  appendLoading();
+  try {
+    const res = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:msg, file_path:activeFilePath}) });
+    const data = await res.json();
+    document.getElementById('loading-bubble')?.remove();
+    appendMsg('ai', data.response || data.error || 'No response.');
+  } catch(e) {
+    document.getElementById('loading-bubble')?.remove();
+    appendMsg('ai', `❌ Error: ${e.message}`);
+  }
+}
+
+function quickSend(text) { document.getElementById('user-input').value = text; sendMessage(); }
+document.getElementById('user-input').addEventListener('keydown', e => { if (e.key==='Enter') sendMessage(); });
+</script>
+{% endblock %}

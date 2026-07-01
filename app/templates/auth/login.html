@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — Grivora AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#f0f4ff; --surface:#fff; --surface2:#f8faff;
+      --border:rgba(29,78,216,0.13); --border2:rgba(29,78,216,0.28);
+      --accent:#1d4ed8; --accent2:#7c3aed; --accent3:#0891b2;
+      --text:#0a1628; --text2:#3a5080; --text3:#7a96c0;
+      --success:#059669; --danger:#dc2626; --warning:#d97706;
+      --shadow:0 8px 48px rgba(10,22,40,.11),0 2px 8px rgba(10,22,40,.06);
+    }
+    @media(prefers-color-scheme:dark){:root{
+      --bg:#06080f; --surface:#111827; --surface2:#161d2e;
+      --border:rgba(79,138,255,.12); --border2:rgba(79,138,255,.26);
+      --accent:#4f8aff; --accent2:#a78bfa; --accent3:#22d3ee;
+      --text:#eef2ff; --text2:#8faad8; --text3:#3d527a;
+      --shadow:0 8px 48px rgba(0,0,0,.55),0 2px 8px rgba(0,0,0,.3);
+    }}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      font-family:'Plus Jakarta Sans',sans-serif; background:var(--bg); color:var(--text);
+      min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px 16px;
+    }
+    body::before{
+      content:''; position:fixed; inset:0; pointer-events:none;
+      background-image:radial-gradient(var(--border) 1px,transparent 1px);
+      background-size:28px 28px; opacity:.55;
+    }
+    body::after{
+      content:''; position:fixed; bottom:-15%; right:-10%; width:55vw; height:55vw;
+      background:radial-gradient(circle,rgba(109,40,217,.06),transparent 65%); pointer-events:none;
+    }
+
+    /* ── Card ── */
+    .card{
+      position:relative; z-index:1; background:var(--surface);
+      border:1.5px solid var(--border); border-radius:24px;
+      padding:40px 44px; width:100%; max-width:440px; box-shadow:var(--shadow);
+    }
+    @media(max-width:480px){.card{padding:28px 20px;border-radius:18px;}}
+
+    /* ── Logo ── */
+    .logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:26px;}
+    .logo-text{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:21px;
+               letter-spacing:-0.03em;color:var(--text);}
+    .logo-text span{font-weight:400;opacity:.55;}
+    h1{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:24px;
+       letter-spacing:-0.03em;text-align:center;margin-bottom:6px;}
+    .sub{font-size:14px;color:var(--text2);text-align:center;margin-bottom:22px;}
+
+    /* ── Messages ── */
+    .msg{padding:11px 15px;border-radius:10px;font-size:13px;font-weight:500;
+         margin-bottom:14px;display:none;line-height:1.5;}
+    .msg.error  {background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.2);color:var(--danger);}
+    .msg.success{background:rgba(5,150,105,.07);border:1px solid rgba(5,150,105,.2);color:var(--success);}
+    .msg.info   {background:rgba(29,78,216,.07);border:1px solid rgba(29,78,216,.2);color:var(--accent);}
+    .msg.warning{background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.2);color:var(--warning);}
+
+    /* ── Social buttons ── */
+    .social-btn{
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      width:100%;padding:12px;border-radius:12px;font-family:inherit;
+      font-size:14px;font-weight:600;cursor:pointer;transition:all .22s;
+      text-decoration:none;margin-bottom:10px;
+    }
+    .btn-google{
+      background:#fff;color:#3c4043;
+      border:1.5px solid #dadce0;
+      box-shadow:0 1px 4px rgba(0,0,0,.08);
+    }
+    .btn-google:hover{background:#f8f9fa;border-color:#c6c9cc;box-shadow:0 2px 8px rgba(0,0,0,.12);}
+    @media(prefers-color-scheme:dark){
+      .btn-google{background:#1f2937;color:#e5e7eb;border-color:rgba(255,255,255,.12);}
+      .btn-google:hover{background:#273145;}
+    }
+    .btn-email-picker{
+      background:var(--surface2);color:var(--text);
+      border:1.5px solid var(--border2);
+    }
+    .btn-email-picker:hover{background:var(--border);border-color:var(--accent);}
+
+    /* ── Divider ── */
+    .divider{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--text3);font-size:12px;}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+
+    /* ── OTP tabs ── */
+    .tabs{display:flex;background:var(--surface2);border:1.5px solid var(--border);
+          border-radius:11px;padding:3px;margin-bottom:16px;gap:3px;}
+    .tab{
+      flex:1;padding:8.5px;border:none;border-radius:8px;font-family:inherit;
+      font-size:13px;font-weight:600;cursor:pointer;transition:all .22s;
+      color:var(--text3);background:transparent;
+    }
+    .tab.on{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(29,78,216,.25);}
+
+    /* ── Fields ── */
+    .field{margin-bottom:14px;}
+    label{display:block;font-size:12.5px;font-weight:600;color:var(--text2);margin-bottom:5px;}
+    input[type=email],input[type=tel],input[type=text]{
+      width:100%;padding:11px 14px;
+      background:var(--surface2);border:1.5px solid var(--border);
+      border-radius:10px;color:var(--text);font-family:inherit;font-size:14px;
+      outline:none;transition:all .22s;
+    }
+    input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,78,216,.10);background:var(--surface);}
+    input::placeholder{color:var(--text3);}
+    .prefix-wrap{position:relative;}
+    .prefix-wrap input{padding-left:46px;}
+    .prefix{position:absolute;left:13px;top:50%;transform:translateY(-50%);
+            font-size:13.5px;font-weight:600;color:var(--text2);}
+
+    /* ── Primary button ── */
+    .btn-primary{
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      width:100%;padding:12.5px;background:var(--accent);color:#fff;border:none;
+      border-radius:12px;font-family:inherit;font-size:14.5px;font-weight:700;
+      cursor:pointer;transition:all .25s;letter-spacing:-0.01em;
+    }
+    .btn-primary:hover{opacity:.88;transform:translateY(-1px);}
+    .btn-primary:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+
+    /* ── OTP boxes ── */
+    .otp-row{display:flex;gap:9px;justify-content:center;margin:14px 0;}
+    .otp-digit{
+      width:46px;height:52px;text-align:center;font-size:20px;font-weight:700;
+      padding:0;border-radius:11px;letter-spacing:0;
+      background:var(--surface2);border:1.5px solid var(--border);
+      color:var(--text);font-family:inherit;outline:none;transition:all .22s;
+    }
+    .otp-digit:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,78,216,.10);}
+
+    /* ── OTP dest info ── */
+    .otp-info{
+      background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+      padding:11px 14px;margin-bottom:14px;font-size:13px;color:var(--text2);
+      line-height:1.6;text-align:center;
+    }
+    .otp-info strong{color:var(--text);}
+
+    /* ── Timer ── */
+    .timer{font-size:12px;color:var(--text3);text-align:center;margin-top:10px;}
+    .timer span{font-weight:700;color:var(--accent);}
+
+    .btn-link{background:none;border:none;color:var(--accent);font-family:inherit;
+              font-size:13px;font-weight:600;cursor:pointer;padding:0;text-decoration:underline;}
+    .foot{text-align:center;margin-top:16px;font-size:13px;color:var(--text3);}
+    .foot a{color:var(--accent);font-weight:600;text-decoration:none;}
+    .hidden{display:none!important;}
+
+    /* ── Email picker modal ── */
+    .picker-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;
+      display:flex;align-items:center;justify-content:center;padding:20px;
+    }
+    .picker-card{
+      background:var(--surface);border-radius:20px;padding:28px 30px;
+      max-width:380px;width:100%;box-shadow:0 16px 64px rgba(0,0,0,.3);
+      border:1.5px solid var(--border2);
+    }
+    .picker-logo{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:18px;}
+    .picker-title{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:18px;
+                  text-align:center;margin-bottom:5px;}
+    .picker-sub{font-size:13px;color:var(--text2);text-align:center;margin-bottom:20px;line-height:1.5;}
+    .picker-input-wrap{position:relative;margin-bottom:12px;}
+    .picker-input{
+      width:100%;padding:11px 14px 11px 42px;
+      background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;
+      color:var(--text);font-family:inherit;font-size:14px;outline:none;transition:all .22s;
+    }
+    .picker-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(29,78,216,.10);}
+    .picker-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);}
+    .picker-suggestions{
+      border:1.5px solid var(--border);border-radius:10px;overflow:hidden;
+      margin-bottom:12px;display:none;
+    }
+    .picker-suggestion{
+      display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;
+      font-size:13.5px;color:var(--text);transition:background .15s;border-bottom:1px solid var(--border);
+    }
+    .picker-suggestion:last-child{border-bottom:none;}
+    .picker-suggestion:hover{background:var(--surface2);}
+    .picker-suggestion .avatar{
+      width:30px;height:30px;border-radius:50%;
+      background:linear-gradient(135deg,#1d4ed8,#7c3aed);
+      display:flex;align-items:center;justify-content:center;
+      font-size:13px;font-weight:700;color:#fff;flex-shrink:0;
+    }
+    .picker-suggestion .email-text{font-size:13.5px;font-weight:500;}
+    .picker-btn-row{display:flex;gap:9px;margin-top:6px;}
+    .picker-cancel{flex:1;padding:10px;border:1.5px solid var(--border2);border-radius:10px;
+                   background:var(--surface);color:var(--text2);font-family:inherit;
+                   font-size:13.5px;font-weight:600;cursor:pointer;transition:background .15s;}
+    .picker-cancel:hover{background:var(--surface2);}
+    .picker-continue{flex:2;}
+
+    /* ── Provider badge ── */
+    .sent-via{
+      display:inline-flex;align-items:center;gap:5px;
+      font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;
+      background:rgba(5,150,105,.1);color:var(--success);margin-left:6px;
+      vertical-align:middle;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     EMAIL PICKER MODAL
+══════════════════════════════════════════════════ -->
+<div class="picker-overlay hidden" id="email-picker-overlay" onclick="closePicker(event)">
+  <div class="picker-card" onclick="event.stopPropagation()">
+    <div class="picker-logo">
+      <svg width="22" height="22" viewBox="0 0 34 34" fill="none">
+        <rect width="34" height="34" rx="9" fill="url(#plg)"/>
+        <path d="M6 17C6 17 10 10 17 10C24 10 28 17 28 17S24 24 17 24S6 17 6 17Z"
+              stroke="white" stroke-width="1.4" fill="none" opacity=".7"/>
+        <circle cx="17" cy="17" r="4.5" fill="white" opacity=".95"/>
+        <circle cx="17" cy="17" r="2.2" fill="url(#plg)"/>
+        <defs><linearGradient id="plg" x1="0" y1="0" x2="34" y2="34">
+          <stop offset="0%" stop-color="#1d4ed8"/><stop offset="50%" stop-color="#6d28d9"/>
+          <stop offset="100%" stop-color="#0e7490"/></linearGradient></defs>
+      </svg>
+      <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:17px;color:var(--text);">Grivora AI</span>
+    </div>
+    <div class="picker-title">Sign in with Email</div>
+    <p class="picker-sub">Enter your registered email address to receive a one-time password.</p>
+
+    <div class="picker-input-wrap">
+      <svg class="picker-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="4" width="20" height="16" rx="3" stroke="var(--text3)" stroke-width="1.6"/>
+        <path d="M2 8l10 6 10-6" stroke="var(--text3)" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      <input class="picker-input" type="email" id="picker-email" placeholder="you@gmail.com"
+             autocomplete="email" oninput="filterSuggestions()" onkeydown="pickerKey(event)">
+    </div>
+
+    <!-- Saved email suggestions -->
+    <div class="picker-suggestions" id="picker-suggestions"></div>
+
+    <p style="font-size:11.5px;color:var(--text3);margin-bottom:12px;line-height:1.5;">
+      We'll send a 6-digit code to this address. Check your inbox and spam folder.
+    </p>
+
+    <div class="picker-btn-row">
+      <button class="picker-cancel" onclick="closePicker()">Cancel</button>
+      <button class="btn-primary picker-continue" onclick="pickerContinue()">
+        Send OTP →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MAIN CARD
+══════════════════════════════════════════════════ -->
+<div class="card">
+
+  <!-- Logo -->
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 34 34" fill="none">
+      <rect width="34" height="34" rx="9" fill="url(#lg)"/>
+      <path d="M6 17C6 17 10 10 17 10C24 10 28 17 28 17S24 24 17 24S6 17 6 17Z"
+            stroke="white" stroke-width="1.4" fill="none" opacity=".7"/>
+      <circle cx="17" cy="17" r="4.5" fill="white" opacity=".95"/>
+      <circle cx="17" cy="17" r="2.2" fill="url(#lg)"/>
+      <circle cx="18.5" cy="15.5" r="1.1" fill="white" opacity=".6"/>
+      <defs><linearGradient id="lg" x1="0" y1="0" x2="34" y2="34">
+        <stop offset="0%" stop-color="#1d4ed8"/><stop offset="50%" stop-color="#6d28d9"/>
+        <stop offset="100%" stop-color="#0e7490"/></linearGradient></defs>
+    </svg>
+    <span class="logo-text">Grivora <span>AI</span></span>
+  </div>
+
+  <h1>Welcome Back</h1>
+  <p class="sub">Choose how you want to sign in</p>
+
+  <!-- Messages -->
+  <div id="msg-box" class="msg"></div>
+  {% if google_msg %}
+  <div class="msg error" style="display:block;">{{ google_msg }}</div>
+  {% endif %}
+
+  <!-- ══ SIGN-IN OPTIONS (step 0) ══ -->
+  <div id="step0">
+
+    <!-- Continue with Google -->
+    {% if google_ok %}
+    <a href="/auth/google" class="social-btn btn-google">
+      <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      Continue with Google
+    </a>
+    {% else %}
+    <button class="social-btn btn-google" style="opacity:.5;cursor:not-allowed;" disabled title="Google Sign-In not configured">
+      <svg width="18" height="18" viewBox="0 0 48 48" fill="none" opacity=".5">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      Continue with Google
+    </button>
+    {% endif %}
+
+    <!-- Continue with Email (OTP picker) -->
+    <button class="social-btn btn-email-picker" onclick="openPicker()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M2 8l10 6 10-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      Continue with Email
+    </button>
+
+    <div class="divider">or use OTP</div>
+
+    <!-- Email / Mobile OTP tabs -->
+    <div class="tabs">
+      <button class="tab on" id="tab-email" onclick="setVia('email')">
+        📧 Email OTP
+      </button>
+      <button class="tab" id="tab-mobile" onclick="setVia('mobile')">
+        📱 Mobile OTP
+      </button>
+    </div>
+
+    <div class="field" id="field-email">
+      <label>Email Address</label>
+      <input type="email" id="inp-email" placeholder="you@gmail.com" autocomplete="email">
+    </div>
+    <div class="field hidden" id="field-mobile">
+      <label>Mobile Number</label>
+      <div class="prefix-wrap">
+        <span class="prefix">+91</span>
+        <input type="tel" id="inp-mobile" placeholder="10-digit number" maxlength="10" autocomplete="tel">
+      </div>
+    </div>
+    <button class="btn-primary" id="btn-send" onclick="sendOtp()">
+      Send OTP →
+    </button>
+  </div>
+
+  <!-- ══ OTP ENTRY (step 1) ══ -->
+  <div id="step1" class="hidden">
+    <div class="otp-info">
+      OTP sent to <strong id="otp-dest"></strong>
+      <span class="sent-via" id="sent-via-badge">✓ Sent</span><br>
+      <small style="color:var(--text3);font-size:12px;">
+        Check email inbox &amp; spam folder · Allow up to 60 seconds
+      </small>
+    </div>
+    <div class="otp-row">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric" autocomplete="one-time-code">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+      <input type="text" maxlength="1" class="otp-digit" inputmode="numeric">
+    </div>
+    <button class="btn-primary" id="btn-verify" onclick="verifyOtp()" style="margin-bottom:10px;">
+      Sign In →
+    </button>
+    <div class="timer">
+      Didn't get it?
+      <button class="btn-link" id="resend-btn" onclick="resend()" disabled>Resend OTP</button>
+      <span id="timer-disp"></span>
+    </div>
+    <div style="text-align:center;margin-top:10px;">
+      <button class="btn-link" onclick="goBack()" style="color:var(--text3);font-size:12px;">
+        ← Change method
+      </button>
+    </div>
+  </div>
+
+  <div class="foot">Don't have an account? <a href="/auth/register">Create Account</a></div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────────────── */
+let via = 'email';
+let timerInterval;
+const $ = id => document.getElementById(id);
+
+/* Emails saved in localStorage (for picker suggestions) */
+const SAVED_KEY = 'grivora_saved_emails';
+function getSavedEmails(){ try{ return JSON.parse(localStorage.getItem(SAVED_KEY)||'[]'); }catch{ return []; } }
+function saveEmail(e){ const arr=getSavedEmails(); if(!arr.includes(e)){ arr.unshift(e); localStorage.setItem(SAVED_KEY, JSON.stringify(arr.slice(0,5))); } }
+
+/* ─────────────────────────────────────────────────────────
+   EMAIL PICKER MODAL
+───────────────────────────────────────────────────────── */
+function openPicker(){
+  $('email-picker-overlay').classList.remove('hidden');
+  setTimeout(()=>{ $('picker-email').focus(); }, 80);
+  renderSuggestions(getSavedEmails());
+}
+function closePicker(ev){
+  if(!ev || ev.target === $('email-picker-overlay'))
+    $('email-picker-overlay').classList.add('hidden');
+}
+function filterSuggestions(){
+  const q = $('picker-email').value.toLowerCase();
+  const saved = getSavedEmails().filter(e => e.toLowerCase().includes(q));
+  renderSuggestions(q.length > 0 ? saved : getSavedEmails());
+}
+function renderSuggestions(arr){
+  const wrap = $('picker-suggestions');
+  if(!arr.length){ wrap.style.display='none'; return; }
+  wrap.style.display = 'block';
+  wrap.innerHTML = arr.map(e => `
+    <div class="picker-suggestion" onclick="pickEmail('${e}')">
+      <div class="avatar">${e[0].toUpperCase()}</div>
+      <div class="email-text">${e}</div>
+    </div>`).join('');
+}
+function pickEmail(e){
+  $('picker-email').value = e;
+  $('picker-suggestions').style.display = 'none';
+}
+function pickerKey(ev){
+  if(ev.key === 'Enter') pickerContinue();
+}
+async function pickerContinue(){
+  const email = $('picker-email').value.trim();
+  if(!email){ $('picker-email').focus(); return; }
+  $('email-picker-overlay').classList.add('hidden');
+  /* pre-fill the main email input and trigger send */
+  $('inp-email').value = email;
+  via = 'email';
+  await sendOtp();
+}
+
+/* ─────────────────────────────────────────────────────────
+   OTP SEND / VERIFY
+───────────────────────────────────────────────────────── */
+function setVia(v){
+  via = v;
+  $('tab-email').className  = 'tab' + (v==='email' ? ' on':'');
+  $('tab-mobile').className = 'tab' + (v==='mobile'? ' on':'');
+  $('field-email').classList.toggle('hidden',  v!=='email');
+  $('field-mobile').classList.toggle('hidden', v!=='mobile');
+  clearMsg();
+}
+
+function showMsg(msg, type='error'){
+  const el=$('msg-box'); el.textContent=msg; el.className='msg '+type; el.style.display='block';
+}
+function clearMsg(){ $('msg-box').style.display='none'; }
+
+async function sendOtp(){
+  clearMsg();
+  const identifier = via==='email'
+    ? $('inp-email').value.trim()
+    : $('inp-mobile').value.trim();
+
+  if(!identifier){
+    showMsg(via==='email' ? 'Please enter your email address.' : 'Please enter your mobile number.');
+    return;
+  }
+  const btn = $('btn-send');
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;"></span> Sending…';
+
+  try{
+    const res  = await fetch('/auth/login/send-otp',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({identifier, via})
+    });
+    const data = await res.json();
+    btn.disabled = false; btn.textContent = 'Send OTP →';
+
+    if(!data.ok){ showMsg(data.msg); return; }
+
+    /* Save email for future picker suggestions */
+    if(via === 'email') saveEmail(identifier);
+
+    $('otp-dest').textContent = via==='email' ? identifier : `+91 ****${identifier.slice(-4)}`;
+    $('sent-via-badge').textContent = via==='email' ? '✓ Email sent' : '✓ SMS sent';
+    $('step0').classList.add('hidden');
+    $('step1').classList.remove('hidden');
+    showMsg(`OTP sent to ${identifier} — check your ${via==='email'?'inbox':'phone'}`, 'success');
+    startTimer();
+    document.querySelector('.otp-digit').focus();
+  }catch(e){
+    btn.disabled = false; btn.textContent = 'Send OTP →';
+    showMsg('Network error. Please try again.');
+  }
+}
+
+async function verifyOtp(){
+  clearMsg();
+  const digits = [...document.querySelectorAll('.otp-digit')].map(i=>i.value).join('');
+  if(digits.length < 6){ showMsg('Please enter all 6 digits.'); return; }
+
+  const btn = $('btn-verify');
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;"></span> Signing in…';
+
+  try{
+    const res  = await fetch('/auth/login/verify-otp',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({otp: digits})
+    });
+    const data = await res.json();
+    btn.disabled = false; btn.textContent = 'Sign In →';
+
+    if(!data.ok){ showMsg(data.msg); return; }
+    showMsg('Welcome back! Redirecting…', 'success');
+    const params = new URLSearchParams(window.location.search);
+    setTimeout(()=> window.location.href = params.get('next') || data.redirect || '/', 900);
+  }catch(e){
+    btn.disabled = false; btn.textContent = 'Sign In →';
+    showMsg('Network error. Please try again.');
+  }
+}
+
+async function resend(){
+  clearMsg();
+  try{
+    const res  = await fetch('/auth/resend-otp',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ctx:'login'})
+    });
+    const data = await res.json();
+    if(data.ok){ showMsg('OTP resent! Check your inbox.', 'success'); startTimer(); }
+    else showMsg(data.msg);
+  }catch(e){ showMsg('Network error.'); }
+}
+
+function goBack(){
+  $('step1').classList.add('hidden');
+  $('step0').classList.remove('hidden');
+  document.querySelectorAll('.otp-digit').forEach(i=>i.value='');
+  clearMsg(); clearInterval(timerInterval);
+}
+
+function startTimer(){
+  let sec = 60;
+  const btn=$('resend-btn'), disp=$('timer-disp');
+  btn.disabled = true; disp.innerHTML = `in <span>${sec}s</span>`;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    sec--;
+    if(sec<=0){ clearInterval(timerInterval); btn.disabled=false; disp.textContent=''; }
+    else disp.innerHTML = `in <span>${sec}s</span>`;
+  }, 1000);
+}
+
+/* ─────────────────────────────────────────────────────────
+   DOM SETUP
+───────────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', ()=>{
+  /* OTP digit auto-advance, backspace, paste */
+  const digits = [...document.querySelectorAll('.otp-digit')];
+  digits.forEach((inp,i)=>{
+    inp.addEventListener('input', e=>{
+      const v = e.target.value.replace(/\D/g,'');
+      e.target.value = v.slice(-1);
+      if(v && i < digits.length-1) digits[i+1].focus();
+    });
+    inp.addEventListener('keydown', e=>{
+      if(e.key==='Backspace' && !e.target.value && i>0) digits[i-1].focus();
+      if(e.key==='Enter') verifyOtp();
+    });
+    inp.addEventListener('paste', e=>{
+      e.preventDefault();
+      const p=(e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'');
+      [...p.slice(0,6)].forEach((ch,j)=>{ if(digits[i+j]) digits[i+j].value=ch; });
+      digits[Math.min(i+p.length, digits.length-1)].focus();
+    });
+  });
+
+  /* Enter on email/mobile inputs */
+  ['inp-email','inp-mobile'].forEach(id=>{
+    const el=$(id);
+    if(el) el.addEventListener('keydown', e=>{ if(e.key==='Enter') sendOtp(); });
+  });
+
+  /* Close picker on Escape */
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Escape') closePicker();
+  });
+});
+</script>
+
+<style>
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</body>
+</html>

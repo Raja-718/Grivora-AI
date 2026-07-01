@@ -1,0 +1,1637 @@
+{% extends "base.html" %}
+{% block title %}AI Dashboard — Grivora AI{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/* ══════════════════════════════════════════════════════════════
+   GRIVORA AI — AI-PLANNED AUTO DASHBOARD v5.0
+══════════════════════════════════════════════════════════════ */
+:root { --dash-radius: 16px; --dash-gap: 18px; }
+
+.adb-wrapper { max-width: 1400px; margin: 0 auto; padding: 28px 32px 100px; }
+@media(max-width:768px){ .adb-wrapper{padding:16px 14px 80px;} }
+
+/* ── Loading screen ─────────────────────────────────────────── */
+.adb-loading-screen {
+  position: fixed; inset: 0; background: var(--bg); z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  padding: 140px 20px 40px; /* 140px top padding keeps circle well below navbar */
+  overflow-y: auto;
+}
+.adb-orbit-system {
+  position: relative; width: 200px; height: 200px; margin-bottom: 40px;
+  flex-shrink: 0;
+}
+.orbit-ring {
+  position: absolute; top: 0; left: 0;
+  width: 200px; height: 200px; /* locked dimensions = perfect circle */
+  border-radius: 50%; border: 2px solid transparent;
+  box-sizing: border-box;
+}
+.orbit-ring-1 { border-top-color:#2563eb; border-right-color:rgba(37,99,235,.3); animation: orbit1 1.8s linear infinite; }
+.orbit-ring-2 { top:18px; left:18px; width:164px; height:164px; border-top-color:#7c3aed; border-left-color:rgba(124,58,237,.3); animation: orbit1 1.2s linear infinite reverse; }
+.orbit-ring-3 { top:36px; left:36px; width:128px; height:128px; border-top-color:#0891b2; border-right-color:rgba(8,145,178,.3); animation: orbit1 2.2s linear infinite; }
+.orbit-ring-4 { top:54px; left:54px; width:92px;  height:92px;  border-top-color:#059669; border-bottom-color:rgba(5,150,105,.3); animation: orbit1 0.9s linear infinite reverse; }
+@keyframes orbit1 { to { transform: rotate(360deg); } }
+.orbit-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.orbit-pct { font-family:'Bricolage Grotesque',sans-serif; font-size:36px; font-weight:900; color:var(--text); line-height:1; }
+.orbit-pct-label { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text3); margin-top:2px; }
+
+.loading-title { font-family:'Bricolage Grotesque',sans-serif; font-size:22px; font-weight:800; color:var(--text); margin-bottom:6px; text-align:center; }
+.loading-sub { font-size:14px; color:var(--text2); margin-bottom:32px; text-align:center; max-width:420px; }
+.loading-steps { display:flex; flex-direction:column; gap:10px; width:340px; max-width:90vw; }
+.loading-step { display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:10px;
+  background:var(--surface); border:1px solid var(--border); font-size:13px; color:var(--text3); transition:all .3s; }
+.loading-step.active { border-color:var(--accent); background:rgba(37,99,235,.06); color:var(--text); }
+.loading-step.done   { border-color:rgba(5,150,105,.4); background:rgba(5,150,105,.06); color:var(--success); }
+.ls-icon { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+  font-size:14px; flex-shrink:0; background:var(--surface2); }
+.loading-step.active .ls-icon { background:rgba(37,99,235,.15); }
+.loading-step.done   .ls-icon { background:rgba(5,150,105,.15); }
+.ls-text { flex:1; }
+.ls-time { font-size:11px; color:var(--text3); opacity:0; transition:opacity .3s; }
+.loading-step.done .ls-time { opacity:1; }
+
+.loading-progress-bar { width:340px; max-width:90vw; height:4px; background:var(--border); border-radius:99px; margin-top:20px; overflow:hidden; }
+.loading-progress-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#2563eb,#7c3aed,#0891b2); background-size:200% 100%; width:0%; transition:width .4s ease; animation: shimmer 2s linear infinite; }
+@keyframes shimmer { 0%{background-position:0% 50%;} 100%{background-position:200% 50%;} }
+
+/* ── No data / Error ────────────────────────────────────────── */
+.adb-nodata { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; gap:14px; text-align:center; }
+
+/* ── Top bar ────────────────────────────────────────────────── */
+.adb-topbar { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid var(--border); }
+.adb-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:20px; font-size:11px; font-weight:700;
+  background:linear-gradient(135deg,rgba(5,150,105,.15),rgba(8,145,178,.1)); color:var(--success); border:1px solid rgba(5,150,105,.2);
+  letter-spacing:.04em; text-transform:uppercase; margin-bottom:8px; }
+.adb-live-dot { width:7px; height:7px; border-radius:50%; background:var(--success); animation: livePulse 2s ease-in-out infinite; }
+@keyframes livePulse { 0%,100%{box-shadow:0 0 0 0 rgba(5,150,105,.5);} 50%{box-shadow:0 0 0 5px rgba(5,150,105,0);} }
+.adb-main-title { font-family:'Bricolage Grotesque',sans-serif; font-size:28px; font-weight:900; color:var(--text); margin:0 0 4px; letter-spacing:-.03em; }
+.adb-file-meta { font-size:13px; color:var(--text2); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.adb-meta-chip { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600;
+  background:var(--surface2); color:var(--text3); border:1px solid var(--border); }
+
+.adb-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.adb-btn { display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border-radius:10px; font-size:13px; font-weight:600;
+  cursor:pointer; transition:all .2s; border:none; text-decoration:none; white-space:nowrap; }
+.adb-btn-primary  { background:var(--accent); color:#fff; box-shadow:0 3px 12px rgba(37,99,235,.25); }
+.adb-btn-primary:hover { opacity:.88; transform:translateY(-1px); }
+.adb-btn-success  { background:var(--success); color:#fff; box-shadow:0 3px 12px rgba(5,150,105,.25); }
+.adb-btn-success:hover { opacity:.88; transform:translateY(-1px); }
+.adb-btn-ghost    { background:transparent; color:var(--text2); border:1px solid var(--border); }
+.adb-btn-ghost:hover { background:var(--surface2); color:var(--text); }
+
+/* ── Plan preview strip (shown after /plan) ───────────────── */
+.plan-strip { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:24px; padding:14px 16px;
+  background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+.plan-strip-label { font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.06em; align-self:center; margin-right:4px; }
+.plan-chip { display:inline-flex; align-items:center; gap:5px; padding:4px 11px; border-radius:20px; font-size:12px; font-weight:600;
+  background:rgba(124,58,237,.08); color:var(--accent2); border:1px solid rgba(124,58,237,.2); }
+
+/* ── KPIs ───────────────────────────────────────────────────── */
+.adb-kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:18px; }
+.adb-kpi-card {
+  background: linear-gradient(135deg, var(--surface) 0%, rgba(255,255,255,0.5) 100%);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px 24px 20px;
+  position: relative; overflow: hidden;
+  transition: transform .25s cubic-bezier(.4,0,.2,1), box-shadow .25s ease, border-color .2s;
+  animation: kpiIn .45s cubic-bezier(.22,.68,0,1.2) both;
+  box-shadow:
+    0 1px 2px rgba(15,23,42,.04),
+    0 4px 12px rgba(15,23,42,.04),
+    inset 0 1px 0 rgba(255,255,255,.6);
+}
+.adb-kpi-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(37,99,235,.25);
+  box-shadow:
+    0 2px 4px rgba(15,23,42,.04),
+    0 12px 28px rgba(15,23,42,.10),
+    0 20px 48px rgba(37,99,235,.08),
+    inset 0 1px 0 rgba(255,255,255,.8);
+}
+/* Top accent bar */
+.adb-kpi-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  border-radius: 18px 18px 0 0;
+}
+/* Soft radial glow in the corner */
+.adb-kpi-card::after {
+  content:''; position:absolute;
+  top:-40px; right:-40px;
+  width:140px; height:140px;
+  border-radius:50%;
+  opacity:.08;
+  filter: blur(4px);
+  transition: opacity .3s, transform .3s;
+}
+.adb-kpi-card:hover::after { opacity:.14; transform: scale(1.15); }
+.c0::before{background:linear-gradient(90deg,#2563eb,#7c3aed);} .c0::after{background:#2563eb;}
+.c1::before{background:linear-gradient(90deg,#059669,#0891b2);} .c1::after{background:#059669;}
+.c2::before{background:linear-gradient(90deg,#d97706,#dc2626);} .c2::after{background:#d97706;}
+.c3::before{background:linear-gradient(90deg,#7c3aed,#0891b2);} .c3::after{background:#7c3aed;}
+.c4::before{background:linear-gradient(90deg,#0891b2,#059669);} .c4::after{background:#0891b2;}
+.c5::before{background:linear-gradient(90deg,#dc2626,#7c3aed);} .c5::after{background:#dc2626;}
+.c6::before{background:linear-gradient(90deg,#059669,#2563eb);} .c6::after{background:#059669;}
+.c7::before{background:linear-gradient(90deg,#d97706,#059669);} .c7::after{background:#d97706;}
+.kpi-val {
+  font-family:'Bricolage Grotesque',sans-serif;
+  font-size:28px; font-weight:900; color:var(--text);
+  line-height:1.1; margin-bottom:8px; margin-top:4px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  letter-spacing: -0.02em;
+}
+.kpi-label {
+  font-size:10.5px; color:var(--text2);
+  text-transform:uppercase; letter-spacing:.08em; line-height:1.4;
+  font-weight: 700;
+}
+@keyframes kpiIn { from{opacity:0;transform:translateY(14px) scale(.96);} to{opacity:1;transform:translateY(0) scale(1);} }
+
+/* ── Section headers ─────────────────────────────────────── */
+.adb-section { margin-bottom:36px; }
+.adb-section-header { display:flex; align-items:center; gap:12px; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+.adb-section-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.adb-section-title { font-family:'Bricolage Grotesque',sans-serif; font-size:17px; font-weight:800; color:var(--text); margin:0; }
+.adb-section-count { font-size:11px; color:var(--text3); margin-left:auto; background:var(--surface2); padding:3px 9px; border-radius:20px; border:1px solid var(--border); }
+
+/* ── Chart cards ─────────────────────────────────────────── */
+.adb-chart-grid-1 { display:grid; grid-template-columns:1fr; gap:var(--dash-gap); }
+.adb-chart-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:var(--dash-gap); }
+.adb-chart-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--dash-gap); }
+@media(max-width:1100px){ .adb-chart-grid-3{grid-template-columns:1fr 1fr;} }
+@media(max-width:720px){  .adb-chart-grid-2,.adb-chart-grid-3{grid-template-columns:1fr;} }
+
+.adb-chart-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--dash-radius);
+  padding:20px 22px; position:relative; transition:box-shadow .2s; animation:chartIn .45s ease both; }
+.adb-chart-card:hover { box-shadow:0 8px 28px rgba(0,0,0,.08); }
+.chart-label { font-size:13px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:7px; margin-bottom:3px; }
+.chart-sub   { font-size:11px; color:var(--text3); margin-bottom:16px; line-height:1.5; }
+.chart-canvas-wrap { position:relative; }
+.chart-type-badge { font-size:9px; font-weight:800; letter-spacing:.06em; padding:2px 7px; border-radius:6px; text-transform:uppercase;
+  background:var(--surface2); color:var(--text3); border:1px solid var(--border); margin-left:auto; }
+.chart-error { font-size:12px; color:var(--text3); padding:18px; text-align:center; font-style:italic; }
+@keyframes chartIn { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+
+/* ── Insights ────────────────────────────────────────────── */
+.adb-insights-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media(max-width:760px){ .adb-insights-grid{grid-template-columns:1fr;} }
+.ins-card { display:flex; align-items:flex-start; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.ins-card.success { border-left:3px solid var(--success); }
+.ins-card.warning { border-left:3px solid var(--warning); }
+.ins-card.info    { border-left:3px solid var(--accent3); }
+.ins-icon  { font-size:22px; flex-shrink:0; }
+.ins-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.ins-body  { font-size:12px; color:var(--text2); line-height:1.65; }
+
+/* ── Column profiles ─────────────────────────────────────── */
+.adb-col-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; }
+.adb-col-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.col-name { font-size:13px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:6px; margin-bottom:10px; overflow:hidden; }
+.col-name span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.col-badge { font-size:9px; font-weight:800; padding:2px 6px; border-radius:5px; flex-shrink:0; text-transform:uppercase; }
+.col-badge.num { background:rgba(37,99,235,.12);  color:var(--accent); }
+.col-badge.cat { background:rgba(124,58,237,.12); color:var(--accent2); }
+.col-row { display:flex; justify-content:space-between; font-size:11px; color:var(--text2); margin-bottom:3px; }
+.col-val { font-weight:600; color:var(--text); text-align:right; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.compl-bar { height:4px; background:var(--border); border-radius:99px; margin-top:10px; overflow:hidden; }
+.compl-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,var(--success),#0891b2); }
+.compl-fill.warn { background:linear-gradient(90deg,var(--warning),var(--danger)); }
+
+/* ── Data preview table ──────────────────────────────────── */
+.adb-table-wrap { overflow-x:auto; border-radius:12px; border:1px solid var(--border); }
+.adb-table { width:100%; border-collapse:collapse; font-size:12px; }
+.adb-table th { text-align:left; padding:10px 13px; font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--text3); background:var(--surface2); border-bottom:1px solid var(--border); white-space:nowrap; position:sticky; top:0; }
+.adb-table td { padding:9px 13px; border-bottom:1px solid var(--border); color:var(--text); max-width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.td-num  { color:var(--accent); font-weight:600; font-variant-numeric:tabular-nums; }
+.td-null { color:var(--text3); font-style:italic; }
+
+.adb-divider { height:1px; background:var(--border); margin:32px 0; }
+
+/* Treemap / funnel / waterfall / gauge — custom HTML renderers */
+.grv-treemap { display:grid; gap:4px; }
+.grv-tm-node { color:#fff; border-radius:8px; padding:10px 12px; font-size:12px; font-weight:700;
+  display:flex; flex-direction:column; justify-content:flex-end; overflow:hidden; }
+.grv-tm-val { font-size:10px; font-weight:500; opacity:.85; }
+.grv-funnel { display:flex; flex-direction:column; gap:4px; align-items:center; }
+.grv-funnel-row { padding:8px 12px; font-size:12px; font-weight:700; color:#fff; text-align:center; border-radius:6px; }
+.grv-wf-row { display:flex; align-items:center; gap:10px; margin-bottom:4px; font-size:11px; }
+.grv-wf-bar { height:18px; border-radius:4px; flex-shrink:0; }
+.grv-wf-label { flex:1; color:var(--text2); }
+.grv-wf-val { font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
+.grv-gauge { text-align:center; padding:10px 0; }
+.grv-gauge-val { font-family:'Bricolage Grotesque',sans-serif; font-size:40px; font-weight:900; color:var(--accent); line-height:1; }
+.grv-gauge-label { font-size:12px; color:var(--text3); margin-top:8px; }
+.grv-gauge-bar { height:10px; background:var(--border); border-radius:99px; margin-top:14px; overflow:hidden; position:relative; }
+.grv-gauge-fill { height:100%; background:linear-gradient(90deg,#2563eb,#7c3aed,#0891b2); border-radius:99px; transition:width .8s ease; }
+.grv-heatmap-cell { display:inline-block; width:30px; height:30px; text-align:center; line-height:30px; font-size:9px; font-weight:700; color:#fff; border-radius:3px; }
+.grv-heatmap-table { border-collapse:separate; border-spacing:2px; font-size:10px; }
+.grv-heatmap-table th { font-size:10px; font-weight:600; color:var(--text3); padding:2px 4px; }
+
+/* Export toast */
+.export-toast { position:fixed; bottom:32px; right:32px; background:var(--success); color:#fff; padding:12px 20px; border-radius:12px;
+  font-size:13px; font-weight:700; box-shadow:0 8px 32px rgba(5,150,105,.4); display:none; z-index:9000; }
+
+/* Export dropdown menu */
+.export-wrap { position: relative; display: inline-block; }
+.export-menu {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  background: var(--surface); border: 1.5px solid var(--border2);
+  border-radius: 14px; padding: 6px; min-width: 200px;
+  box-shadow: 0 12px 40px rgba(15,23,42,.14), 0 4px 12px rgba(15,23,42,.06);
+  z-index: 500; display: none;
+  animation: dropIn .18s cubic-bezier(.2,.8,.2,1) both;
+}
+.export-menu.open { display: block; }
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-8px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.export-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 13px; border-radius: 9px;
+  font-size: 13px; font-weight: 600; color: var(--text);
+  cursor: pointer; transition: background .15s, color .15s;
+  border: none; background: transparent; width: 100%; text-align: left;
+  font-family: inherit;
+}
+.export-item:hover { background: var(--surface2); }
+.export-item-icon {
+  width: 28px; height: 28px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.export-item-icon svg { width: 15px; height: 15px; }
+.export-item-pdf  .export-item-icon { background: rgba(220,38,38,.12); color: #dc2626; }
+.export-item-png  .export-item-icon { background: rgba(37,99,235,.12);  color: #2563eb; }
+.export-item-print .export-item-icon { background: rgba(5,150,105,.12); color: #059669; }
+.export-item-text { flex: 1; }
+.export-item-sub {
+  font-size: 11px; color: var(--text3); font-weight: 500;
+  margin-top: 1px;
+}
+
+/* PDF export sandbox: off-screen container where we render pages one-by-one.
+   Fixed width for consistent layout regardless of viewport. */
+.pdf-sandbox {
+  position: fixed; left: -20000px; top: 0;
+  width: 1100px; background: #ffffff;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #0f172a;
+}
+.pdf-cover {
+  padding: 56px 56px 48px; background: #ffffff;
+  border-bottom: 3px solid transparent;
+  border-image: linear-gradient(90deg, #2563eb, #7c3aed, #0891b2) 1;
+  position: relative;
+}
+.pdf-cover::after {
+  content: ''; position: absolute; right: -60px; top: -60px;
+  width: 260px; height: 260px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(37,99,235,.10), transparent 70%);
+  pointer-events: none;
+}
+.pdf-brand {
+  display: flex; align-items: center; gap: 14px; margin-bottom: 36px;
+}
+.pdf-brand-logo {
+  width: 56px; height: 56px; border-radius: 14px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 24px rgba(37,99,235,.32);
+  flex-shrink: 0;
+}
+.pdf-brand-name {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 28px; font-weight: 900;
+  letter-spacing: -0.03em; color: #0f172a;
+}
+.pdf-brand-tag {
+  font-size: 11px; color: #64748b; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; margin-top: 2px;
+}
+.pdf-report-label {
+  font-size: 11px; font-weight: 700; color: #7c3aed;
+  letter-spacing: .14em; text-transform: uppercase; margin-bottom: 10px;
+}
+.pdf-report-title {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 40px; font-weight: 900; color: #0f172a;
+  letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 14px;
+  max-width: 820px;
+}
+.pdf-report-sub {
+  font-size: 14px; color: #475569; line-height: 1.65;
+  max-width: 720px; margin-bottom: 32px;
+}
+.pdf-meta-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+  padding-top: 24px; border-top: 1px solid #e2e8f0;
+}
+.pdf-meta-cell { }
+.pdf-meta-label {
+  font-size: 10px; color: #94a3b8; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px;
+}
+.pdf-meta-value {
+  font-size: 15px; color: #0f172a; font-weight: 700;
+  font-family: 'Bricolage Grotesque', sans-serif;
+}
+.pdf-footer {
+  padding: 10px 20px; font-size: 10px; color: #94a3b8;
+  display: flex; justify-content: space-between; border-top: 1px solid #e2e8f0;
+  background: #fafbfc;
+}
+.pdf-section-wrap { padding: 32px 48px; background: #ffffff; }
+
+/* Print-specific styles: hide buttons + loader, clean page layout */
+@media print {
+  body { background: #fff !important; }
+  .adb-loading-screen, .export-wrap, .export-menu, .export-toast,
+  .adb-actions, nav, header, footer { display: none !important; }
+  .adb-wrapper { padding: 0 !important; max-width: 100% !important; }
+  .adb-chart-card, .adb-kpi-card, .adb-col-card, .ins-card {
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .adb-section { break-inside: avoid-page; }
+  .adb-topbar { border-bottom: 2px solid #0f172a; padding-bottom: 16px; }
+  a { color: inherit !important; text-decoration: none !important; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ═══════════════════════════════ LOADING ═══════════════════════════════ -->
+<div id="adb-loading-screen" class="adb-loading-screen">
+  <div class="adb-orbit-system">
+    <div class="orbit-ring orbit-ring-1"></div>
+    <div class="orbit-ring orbit-ring-2"></div>
+    <div class="orbit-ring orbit-ring-3"></div>
+    <div class="orbit-ring orbit-ring-4"></div>
+    <div class="orbit-center">
+      <div class="orbit-pct" id="load-pct">0%</div>
+      <div class="orbit-pct-label">Processing</div>
+    </div>
+  </div>
+  <div class="loading-title">Building Your AI Dashboard</div>
+  <div class="loading-sub" id="load-sub">Analyzing data and deciding the best visualizations…</div>
+  <div class="loading-steps">
+    <div class="loading-step" id="ls1"><div class="ls-icon">📂</div><div class="ls-text">Reading &amp; profiling data</div><div class="ls-time" id="lt1"></div></div>
+    <div class="loading-step" id="ls2"><div class="ls-icon">🧠</div><div class="ls-text">AI choosing chart types</div><div class="ls-time" id="lt2"></div></div>
+    <div class="loading-step" id="ls3"><div class="ls-icon">📊</div><div class="ls-text">Computing KPIs &amp; metrics</div><div class="ls-time" id="lt3"></div></div>
+    <div class="loading-step" id="ls4"><div class="ls-icon">🎨</div><div class="ls-text">Building charts</div><div class="ls-time" id="lt4"></div></div>
+    <div class="loading-step" id="ls5"><div class="ls-icon">✨</div><div class="ls-text">Rendering dashboard</div><div class="ls-time" id="lt5"></div></div>
+  </div>
+  <div class="loading-progress-bar"><div class="loading-progress-fill" id="load-prog-fill"></div></div>
+</div>
+
+<!-- ═══════════════════════════════ NO DATA ═══════════════════════════════ -->
+<div id="adb-nodata" style="display:none;" class="adb-nodata">
+  <div style="font-size:60px;">📂</div>
+  <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:800;color:var(--text);">No Dataset Loaded</div>
+  <div style="font-size:14px;color:var(--text2);max-width:400px;line-height:1.7;">Upload a CSV or Excel file first, then come back here to generate your AI-powered dashboard.</div>
+  <a href="/upload" class="adb-btn adb-btn-primary" style="margin-top:8px;">Upload Data →</a>
+</div>
+
+<!-- ═══════════════════════════════ ERROR ═══════════════════════════════ -->
+<div id="adb-error" style="display:none;max-width:1400px;margin:40px auto;padding:0 32px;"></div>
+
+<!-- ═══════════════════════════════ DASHBOARD ═══════════════════════════════ -->
+<div id="adb-dashboard" style="display:none;">
+<div class="adb-wrapper" id="adb-export-area">
+
+  <div class="adb-topbar">
+    <div>
+      <div class="adb-badge"><div class="adb-live-dot"></div>AI Dashboard · Live</div>
+      <h1 class="adb-main-title" id="adb-file-title">Dashboard</h1>
+      <div class="adb-file-meta" id="adb-file-meta"></div>
+    </div>
+    <div class="adb-actions">
+      <button class="adb-btn adb-btn-ghost" onclick="reloadDashboard()">↻ Refresh</button>
+      <div class="export-wrap">
+        <button class="adb-btn adb-btn-success" onclick="toggleExportMenu(event)" id="export-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Export
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:2px;">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <div class="export-menu" id="export-menu">
+          <button class="export-item export-item-pdf" onclick="exportPDF()">
+            <span class="export-item-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </span>
+            <span class="export-item-text">
+              Export as PDF
+              <div class="export-item-sub">Branded report with cover page</div>
+            </span>
+          </button>
+          <button class="export-item export-item-png" onclick="exportPNG()">
+            <span class="export-item-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </span>
+            <span class="export-item-text">
+              Export as PNG
+              <div class="export-item-sub">High-resolution image</div>
+            </span>
+          </button>
+          <button class="export-item export-item-print" onclick="printDashboard()">
+            <span class="export-item-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+              </svg>
+            </span>
+            <span class="export-item-text">
+              Print
+              <div class="export-item-sub">Open system print dialog</div>
+            </span>
+          </button>
+        </div>
+      </div>
+      <a href="/upload" class="adb-btn adb-btn-primary">⬆ New Upload</a>
+    </div>
+  </div>
+
+  <!-- AI plan strip -->
+  <div class="plan-strip" id="plan-strip"></div>
+
+  <!-- KPIs -->
+  <div class="adb-section">
+    <div class="adb-section-header">
+      <div class="adb-section-icon" style="background:linear-gradient(135deg,rgba(37,99,235,.12),rgba(124,58,237,.08));">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#2563eb;">
+          <path d="M3 3v18h18"/><path d="M7 15l4-4 4 4 5-5"/>
+        </svg>
+      </div>
+      <h2 class="adb-section-title">Key Performance Indicators</h2>
+      <span class="adb-section-count" id="kpi-count"></span>
+    </div>
+    <div class="adb-kpi-grid" id="adb-kpi-grid"></div>
+  </div>
+
+  <div class="adb-divider"></div>
+
+  <!-- AI-planned charts -->
+  <div class="adb-section">
+    <div class="adb-section-header">
+      <div class="adb-section-icon" style="background:rgba(124,58,237,.1);">🎨</div>
+      <h2 class="adb-section-title">AI-Chosen Visualizations</h2>
+      <span class="adb-section-count" id="chart-count"></span>
+    </div>
+    <div id="adb-chart-area"></div>
+  </div>
+
+  <div class="adb-divider"></div>
+
+  <!-- Insights -->
+  <div class="adb-section">
+    <div class="adb-section-header">
+      <div class="adb-section-icon" style="background:rgba(217,119,6,.1);">🔍</div>
+      <h2 class="adb-section-title">AI-Detected Insights</h2>
+      <span class="adb-section-count" id="ins-count"></span>
+    </div>
+    <div class="adb-insights-grid" id="adb-insights"></div>
+  </div>
+
+  <div class="adb-divider"></div>
+
+  <!-- Column profiles -->
+  <div class="adb-section">
+    <div class="adb-section-header">
+      <div class="adb-section-icon" style="background:rgba(8,145,178,.1);">📋</div>
+      <h2 class="adb-section-title">Column Profiles</h2>
+      <span class="adb-section-count" id="col-count"></span>
+    </div>
+    <div class="adb-col-grid" id="adb-col-grid"></div>
+  </div>
+
+  <div class="adb-divider"></div>
+
+  <!-- Preview -->
+  <div class="adb-section">
+    <div class="adb-section-header">
+      <div class="adb-section-icon" style="background:rgba(5,150,105,.1);">👁️</div>
+      <h2 class="adb-section-title">Data Preview</h2>
+      <span class="adb-section-count" id="prev-count"></span>
+    </div>
+    <div class="adb-table-wrap"><table class="adb-table" id="adb-preview-tbl"></table></div>
+  </div>
+
+</div></div>
+
+<div class="export-toast" id="export-toast">✅ Exporting…</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   GRIVORA AI — AUTO DASHBOARD ENGINE v5.0
+   Two-stage: (1) /plan — LLM picks charts. (2) /render — compute data.
+════════════════════════════════════════════════════════════════════ */
+
+// ── Palette ────────────────────────────────────────────────────
+const PALETTE = ['#2563eb','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#4f46e5','#06b6d4','#f59e0b','#a78bfa','#34d399','#f87171'];
+function rgba(hex, a) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ── Chart.js global defaults ──────────────────────────────────
+Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+Chart.defaults.color = 'var(--text3)';
+
+// ── Chart registry (for safe teardown on reload) ──────────────
+const _charts = {};
+function destroy(id) {
+  if (_charts[id]) { try { _charts[id].destroy(); } catch(e){} delete _charts[id]; }
+}
+
+// ── DOM helpers ───────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+// ── Loading progress ──────────────────────────────────────────
+let _pct = 0, _pctTimer = null, _creepTimer = null, _creepCap = 0;
+function animatePct(target) {
+  clearInterval(_pctTimer);
+  _pctTimer = setInterval(() => {
+    if (_pct >= target) { clearInterval(_pctTimer); return; }
+    // Ease-out: close the gap by 9% each tick with a 0.35 minimum floor.
+    const step = Math.max(0.35, (target - _pct) * 0.09);
+    _pct = Math.min(_pct + step, target);
+    $('load-pct').textContent = Math.floor(_pct) + '%';
+    $('load-prog-fill').style.width = _pct + '%';
+  }, 40);
+}
+// Keep the bar moving slowly toward a ceiling during network waits
+// so the user never sees a frozen percentage.
+function startCreep(cap) {
+  stopCreep();
+  _creepCap = cap;
+  _creepTimer = setInterval(() => {
+    if (_pct >= _creepCap) return;
+    const step = Math.max(0.15, (_creepCap - _pct) * 0.018);
+    _pct = Math.min(_pct + step, _creepCap);
+    $('load-pct').textContent = Math.floor(_pct) + '%';
+    $('load-prog-fill').style.width = _pct + '%';
+  }, 130);
+}
+function stopCreep() {
+  if (_creepTimer) { clearInterval(_creepTimer); _creepTimer = null; }
+}
+function setStep(i, state, timeStr = '') {
+  const el = $('ls' + i), lt = $('lt' + i);
+  if (!el) return;
+  el.classList.remove('active','done');
+  if (state === 'active') el.classList.add('active');
+  if (state === 'done')   { el.classList.add('done'); el.querySelector('.ls-icon').textContent = '✓'; }
+  if (lt && timeStr) lt.textContent = timeStr;
+}
+
+// ── Fetch with timeout ────────────────────────────────────────
+async function apiPost(url, body, timeoutMs = 60000) {
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+      signal: ctrl.signal,
+    });
+    clearTimeout(to);
+    if (resp.status === 401) throw new Error('AUTH_REQUIRED');
+    if (resp.status === 429) throw new Error('Too many requests. Please wait a moment and try again.');
+    if (!resp.ok) {
+      let msg = `Server error (HTTP ${resp.status})`;
+      try { const j = await resp.json(); msg = j.error || msg; } catch(_){}
+      throw new Error(msg);
+    }
+    return await resp.json();
+  } catch(e) {
+    clearTimeout(to);
+    if (e.name === 'AbortError') throw new Error('The server took too long to respond. This is usually a slow AI response — please try again.');
+    throw e;
+  }
+}
+
+// ── Main entry ────────────────────────────────────────────────
+let DASHBOARD_DATA = null;
+
+async function loadDashboard() {
+  _pct = 0;
+  $('adb-loading-screen').style.display = 'flex';
+  $('adb-dashboard').style.display = 'none';
+  $('adb-nodata').style.display = 'none';
+  $('adb-error').style.display = 'none';
+  for (let i = 1; i <= 5; i++) setStep(i, '');
+  animatePct(0);
+
+  try {
+    // ── STAGE 1: PLAN ─────────────────────────────────────────
+    setStep(1, 'active');
+    animatePct(8);
+    await wait(120);
+    setStep(2, 'active');
+    $('load-sub').textContent = 'AI is choosing the best chart types for your data…';
+    animatePct(22);
+
+    const t1 = performance.now();
+    startCreep(50);
+    const plan = await apiPost('/api/auto-dashboard/plan', {}, 60000);
+    stopCreep();
+    const planMs = Math.round(performance.now() - t1);
+    setStep(1, 'done', (planMs / 1000).toFixed(1) + 's');
+    setStep(2, 'done');
+    animatePct(55);
+
+    // ── STAGE 2: RENDER ───────────────────────────────────────
+    setStep(3, 'active');
+    $('load-sub').textContent = `Building ${plan.picks.length} charts chosen by AI…`;
+    animatePct(65);
+
+    const t2 = performance.now();
+    startCreep(92);
+    const data = await apiPost(
+      '/api/auto-dashboard/render',
+      { picks: plan.picks },
+      90000
+    );
+    stopCreep();
+    const renderMs = Math.round(performance.now() - t2);
+    setStep(3, 'done');
+    setStep(4, 'active', (renderMs / 1000).toFixed(1) + 's');
+    animatePct(94);
+
+    // Merge plan + data for UI
+    data.picks  = plan.picks;
+    data.source = plan.source;
+    DASHBOARD_DATA = data;
+
+    await wait(180);
+    setStep(4, 'done');
+    setStep(5, 'active');
+    animatePct(98);
+
+    renderDashboard(data);
+
+    animatePct(100);
+    await wait(350);
+    setStep(5, 'done');
+    $('adb-loading-screen').style.display = 'none';
+    $('adb-dashboard').style.display = 'block';
+
+  } catch (e) {
+    stopCreep();
+    $('adb-loading-screen').style.display = 'none';
+    if (e.message === 'AUTH_REQUIRED') {
+      $('adb-error').innerHTML = `
+        <div style="background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.25);border-radius:12px;padding:20px 24px;color:var(--danger);font-size:14px;">
+          🔒 You need to <a href="/auth/login" style="color:var(--accent);font-weight:700;">sign in</a> to view the dashboard.
+        </div>`;
+      $('adb-error').style.display = 'block';
+      return;
+    }
+    if (String(e.message || '').toLowerCase().includes('no data uploaded')) {
+      $('adb-nodata').style.display = 'flex';
+      return;
+    }
+    $('adb-error').innerHTML = `
+      <div style="background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.25);border-radius:12px;padding:20px 24px;color:var(--danger);font-size:14px;">
+        <strong>⚠️ Dashboard Error</strong><br><br>${e.message}<br><br>
+        <a href="/upload" style="color:var(--accent);font-weight:600;">← Upload a new file</a>
+        &nbsp;&nbsp;
+        <button onclick="reloadDashboard()" style="background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600;">Retry</button>
+      </div>`;
+    $('adb-error').style.display = 'block';
+  }
+}
+
+function reloadDashboard() {
+  Object.keys(_charts).forEach(destroy);
+  loadDashboard();
+}
+
+// ── Render ────────────────────────────────────────────────────
+function renderDashboard(d) {
+  $('adb-file-title').textContent = d.file_name || 'AI Dashboard';
+  $('adb-file-meta').innerHTML = `
+    <span class="adb-meta-chip">🗂️ ${(d.n_rows || 0).toLocaleString()} rows</span>
+    <span class="adb-meta-chip">📋 ${d.n_cols} columns</span>
+    <span class="adb-meta-chip">🔢 ${(d.num_cols || []).length} numeric</span>
+    <span class="adb-meta-chip">🏷️ ${(d.cat_cols || []).length} categorical</span>
+    ${d.sampled ? '<span class="adb-meta-chip">🔬 sampled to 20k for speed</span>' : ''}`;
+
+  const src = d.source === 'llm' ? '🧠 AI' : (d.source === 'llm+rules' ? '🧠 AI + rules' : '📐 rules');
+  $('plan-strip').innerHTML = `
+    <span class="plan-strip-label">Plan (${src}):</span>
+    ${(d.picks || []).map(p => `<span class="plan-chip">${escapeHtml(p.title || p.chart_id)}</span>`).join('')}`;
+
+  buildKPIs(d.kpis || {});
+  buildCharts(d.charts || []);
+  buildInsights(d.insights || []);
+  buildColProfiles(d.col_profiles || [], d.num_cols || []);
+  buildPreview(d.all_cols || [], d.preview_rows || [], d.num_cols || []);
+}
+
+// ── KPIs ──────────────────────────────────────────────────────
+function buildKPIs(kpis) {
+  const entries = Object.entries(kpis);
+  $('kpi-count').textContent = entries.length + ' metrics';
+  const FMT = {
+    currency: v => {
+      const n = Number(v);
+      if (Math.abs(n) >= 1e7) return '₹' + (n/1e7).toFixed(1) + 'Cr';
+      if (Math.abs(n) >= 1e5) return '₹' + (n/1e5).toFixed(1) + 'L';
+      return '₹' + n.toLocaleString('en-IN', {maximumFractionDigits:0});
+    },
+    percent: v => v + '%',
+    number:  v => Number(v).toLocaleString(),
+  };
+  $('adb-kpi-grid').innerHTML = entries.map(([key, kpi], i) => {
+    const fmt = FMT[kpi.fmt] || (v => v);
+    return `<div class="adb-kpi-card c${i % 8}" style="animation-delay:${i*0.04}s">
+      <div class="kpi-val">${fmt(kpi.value)}</div>
+      <div class="kpi-label">${escapeHtml(kpi.label)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── CHART DISPATCHER ──────────────────────────────────────────
+// Builds a card per pick, chooses a layout (full/half width), then
+// routes the chart payload to the appropriate Chart.js (or HTML) renderer.
+function buildCharts(charts) {
+  $('chart-count').textContent = charts.length + ' charts';
+  const area = $('adb-chart-area');
+  area.innerHTML = '';
+
+  // Full-width chart types deserve their own row
+  const FULL_WIDTH = new Set(['time_series', 'multi_line', 'heatmap', 'pareto', 'waterfall', 'dual_axis']);
+
+  let currentRow = null;
+  let placedInRow = 0;
+
+  charts.forEach((c, i) => {
+    const d = c.data || {};
+    if (d.error) {
+      // Render an error card so the user knows why a chart is missing
+      const card = makeCard(`chart-err-${i}`,
+        c.title || c.chart_id, c.why || '', 'error');
+      card.innerHTML += `<div class="chart-error">⚠️ Chart skipped: ${escapeHtml(d.error)}</div>`;
+      area.appendChild(wrapOne(card));
+      return;
+    }
+
+    const wantsFullWidth = FULL_WIDTH.has(c.chart_id);
+    if (wantsFullWidth || currentRow === null || placedInRow >= 2) {
+      currentRow = document.createElement('div');
+      currentRow.className = wantsFullWidth ? 'adb-chart-grid-1' : 'adb-chart-grid-2';
+      area.appendChild(currentRow);
+      placedInRow = 0;
+    }
+
+    const canvasId = `chart-${i}`;
+    const badge    = prettyBadge(c.chart_id);
+    const card     = makeCard(canvasId, c.title || c.chart_id, c.why || '', badge);
+    currentRow.appendChild(card);
+    placedInRow += 1;
+    if (wantsFullWidth) { currentRow = null; placedInRow = 0; }
+
+    // Render on next tick so the canvas is in the DOM
+    setTimeout(() => renderOne(canvasId, c.chart_id, d), 10 + i * 20);
+  });
+}
+
+function prettyBadge(id) {
+  const map = {
+    time_series:'Time Series', multi_line:'Multi-Line', bar:'Bar', hbar:'H-Bar',
+    stacked_bar:'Stacked', grouped_bar:'Grouped', line:'Line', area:'Area',
+    pie:'Pie', donut:'Donut', polar:'Polar', histogram:'Histogram', density:'Density',
+    box:'Box', stats_bar:'Stats', scatter:'Scatter', bubble:'Bubble',
+    radar:'Radar', heatmap:'Heatmap', treemap:'Treemap', funnel:'Funnel',
+    gauge:'Gauge', kpi_tile:'KPI', waterfall:'Waterfall', pareto:'Pareto',
+    cat_counts:'Counts', dual_axis:'Dual-Axis',
+  };
+  return map[id] || id;
+}
+
+// ── Chart renderer dispatch ───────────────────────────────────
+function renderOne(canvasId, chart_id, d) {
+  destroy(canvasId);
+  const wrap = $(canvasId) && $(canvasId).parentElement;
+  if (!$(canvasId)) return;
+
+  try {
+    switch (chart_id) {
+      case 'bar':
+      case 'hbar':         return renderBar(canvasId, d, chart_id === 'hbar' || d.orientation === 'horizontal');
+      case 'stacked_bar':  return renderMultiBar(canvasId, d, true);
+      case 'grouped_bar':  return renderMultiBar(canvasId, d, false);
+      case 'line':
+      case 'area':         return renderLine(canvasId, d);
+      case 'time_series':  return renderLine(canvasId, d);
+      case 'multi_line':   return renderMultiLine(canvasId, d);
+      case 'pie':
+      case 'donut':        return renderDonut(canvasId, d, chart_id === 'donut');
+      case 'polar':        return renderPolar(canvasId, d);
+      case 'histogram':    return renderBar(canvasId, d, false);
+      case 'density':      return renderLine(canvasId, d);
+      case 'box':          return renderBox(canvasId, d);
+      case 'stats_bar':    return renderBar(canvasId, d, false);
+      case 'scatter':      return renderScatter(canvasId, d);
+      case 'bubble':       return renderBubble(canvasId, d);
+      case 'radar':        return renderRadar(canvasId, d);
+      case 'heatmap':      return renderHeatmap(canvasId, d);
+      case 'treemap':      return renderTreemap(canvasId, d);
+      case 'funnel':       return renderFunnel(canvasId, d);
+      case 'gauge':        return renderGauge(canvasId, d);
+      case 'kpi_tile':     return renderKpiTile(canvasId, d);
+      case 'waterfall':    return renderWaterfall(canvasId, d);
+      case 'pareto':       return renderPareto(canvasId, d);
+      case 'cat_counts':   return renderBar(canvasId, d, false);
+      case 'dual_axis':    return renderDualAxis(canvasId, d);
+      default:             return renderBar(canvasId, d, false);
+    }
+  } catch (err) {
+    if (wrap) wrap.innerHTML = `<div class="chart-error">⚠️ Render error: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// ═════════════ Individual renderers ═════════════
+
+function renderBar(id, d, horizontal) {
+  const vals = d.values || [];
+  _charts[id] = new Chart($(id).getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: (d.labels || []).map(String),
+      datasets: [{
+        label: d.y_label || 'value',
+        data: vals,
+        backgroundColor: vals.map((_, i) => rgba(PALETTE[i % PALETTE.length], 0.78)),
+        borderRadius: 6,
+      }],
+    },
+    options: {
+      responsive: true,
+      indexAxis: horizontal ? 'y' : 'x',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color:'var(--text3)', font:{size:10}, maxRotation: 45 } },
+        y: { grid: { color:'rgba(0,0,0,.04)' }, ticks: { color:'var(--text3)', font:{size:10} } },
+      },
+    },
+  });
+}
+
+function renderMultiBar(id, d, stacked) {
+  const datasets = (d.datasets || []).map((ds, i) => ({
+    label: String(ds.label),
+    data: ds.values,
+    backgroundColor: rgba(PALETTE[i % PALETTE.length], 0.8),
+    borderRadius: 4,
+  }));
+  _charts[id] = new Chart($(id).getContext('2d'), {
+    type: 'bar',
+    data: { labels: (d.labels || []).map(String), datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, usePointStyle: true } } },
+      scales: {
+        x: { stacked, grid: { display: false }, ticks: { color:'var(--text3)', font:{size:10}, maxRotation: 35 } },
+        y: { stacked, grid: { color:'rgba(0,0,0,.04)' }, ticks: { color:'var(--text3)', font:{size:10} } },
+      },
+    },
+  });
+}
+
+function renderLine(id, d) {
+  const isFilled = !!d.fill;
+  _charts[id] = new Chart($(id).getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: (d.labels || []).map(String),
+      datasets: [{
+        label: d.y_label || 'value',
+        data: d.values || [],
+        borderColor: PALETTE[0],
+        backgroundColor: rgba(PALETTE[0], 0.08),
+        fill: isFilled,
+        tension: 0.35,
+        pointRadius: 2.5,
+        pointHoverRadius: 5,
+        borderWidth: 2.2,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+      scales: {
+        x: { grid: { color:'rgba(0,0,0,.03)' }, ticks: { color:'var(--text3)', font:{size:10}, maxTicksLimit: 12 } },
+        y: { grid: { color:'rgba(0,0,0,.04)' }, ticks: { color:'var(--text3)', font:{size:10} } },
+      },
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+    },
+  });
+}
+
+function renderMultiLine(id, d) {
+  const datasets = (d.datasets || []).map((ds, i) => ({
+    label: String(ds.label),
+    data: ds.values,
+    borderColor: PALETTE[i % PALETTE.length],
+    backgroundColor: rgba(PALETTE[i % PALETTE.length], 0.1),
+    fill: false,
+    tension: 0.35,
+    pointRadius: 2,
+    borderWidth: 2,
+  }));
+  _charts[id] = new Chart($(id).getContext('2d'), {
+    type: 'line',
+    data: { labels: (d.labels || []).map(String), datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } },
+      scales: {
+        x: { grid: { color:'rgba(0,0,0,.03)' }, ticks: { color:'var(--text3)', font:{size:10}, maxTicksLimit: 12 } },
+        y: { grid: { color:'rgba(0,0,0,.04)' }, ticks: { color:'var(--text3)', font:{size:10} } },
+      },
+    },
+  });
+}
+
+function renderDonut(id, d, isDonut) {
+  _charts[id] = new Chart($(id).getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: (d.labels || []).map(String),
+      datasets: [{
+        data: d.values || [],
+        backgroundColor: PALETTE,
+        borderWidth: 3,
+        borderColor: 'var(--surface)',
+        hoverOffset: 8,
+      }],
+    },
+    options: {
+      responsive: true,
+      cutout: isDonut ? '58%' : '0%',
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 11 }, padding: 12, usePointStyle: true } },
+        tooltip: { callbacks: { label: c => `${c.label}: ${Number(c.raw).toLocaleString()}` } },
+      },
+    },
+  });
+}
+
+function renderPolar(id, d) {
+  _charts[id] = new Chart($(id).getContext('2d'), {
+    type: 'polarArea',
+    data: {
+      labels: (d.labels || []).map(String),
+      datasets: [{ data: d.values || [], backgroundColor: PALETTE.map(c => rgba(c, 0.7)) }],
+    },
+    options: { responsive: true, plugins: { legend: { position: 'right', labels: { font: { size: 10 } } } } },
+  });
+}
+
+function renderScatter(id, d) {
+  const points = (d.x || []).map((x, i) => ({ x, y: (d.y || [])[i] }));
+  _charts[id] = new Chart($(id).getContext('2d'), {
+    type: 'scatter',
+    data: { datasets: [{ label: 'points', data: points, backgroundColor: rgba(PALETTE[0], 0.55), pointRadius: 4 }] },
+    options: {
+      responsive: true, plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: d.x_label || '', color:'var(--text3)' }, grid: { color: 'rgba(0,0,0,.04)' } },
+        y: { title: { display: true, text: d.y_label || '', color:'var(--text3)' }, grid: { color: 'rgba(0,0,0,.04)' } },
+      },
+    },
+  });
+}
+
+function renderBubble(id, d) {
+  _charts[id] = new Chart($(id).getContext('2d'), {
+    type: 'bubble',
+    data: { datasets: [{ label: 'points', data: d.points || [], backgroundColor: rgba(PALETTE[1], 0.5) }] },
+    options: {
+      responsive: true, plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: d.x_label || '', color:'var(--text3)' } },
+        y: { title: { display: true, text: d.y_label || '', color:'var(--text3)' } },
+      },
+    },
+  });
+}
+
+function renderRadar(id, d) {
+  const datasets = (d.datasets || []).map((ds, i) => ({
+    label: ds.label,
+    data: ds.values,
+    backgroundColor: rgba(PALETTE[i % PALETTE.length], 0.18),
+    borderColor: PALETTE[i % PALETTE.length],
+    borderWidth: 2,
+    pointBackgroundColor: PALETTE[i % PALETTE.length],
+  }));
+  _charts[id] = new Chart($(id).getContext('2d'), {
+    type: 'radar',
+    data: { labels: d.labels || [], datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } },
+      scales: { r: { ticks: { backdropColor: 'transparent', color:'var(--text3)', font:{size:9} } } },
+    },
+  });
+}
+
+// ── Heatmap: HTML grid (Chart.js has no native heatmap) ───────
+function renderHeatmap(id, d) {
+  const cols = d.cols || [];
+  const matrix = d.matrix || [];
+  const wrap = $(id).parentElement;
+  $(id).remove();
+  let html = '<table class="grv-heatmap-table"><thead><tr><th></th>';
+  cols.forEach(c => html += `<th>${escapeHtml(truncate(c, 10))}</th>`);
+  html += '</tr></thead><tbody>';
+  matrix.forEach((row, y) => {
+    html += `<tr><th style="text-align:right;">${escapeHtml(truncate(cols[y], 10))}</th>`;
+    row.forEach(v => {
+      const val = v == null ? 0 : v;
+      const color = val > 0 ? PALETTE[0] : '#dc2626';
+      const alpha = Math.min(1, Math.abs(val) * 0.85 + 0.15);
+      html += `<td><span class="grv-heatmap-cell" style="background:${rgba(color, alpha)};" title="${val.toFixed(3)}">${val.toFixed(2)}</span></td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+// ── Treemap: CSS grid with proportional rows ─────────────────
+function renderTreemap(id, d) {
+  const wrap = $(id).parentElement;
+  $(id).remove();
+  const nodes = (d.nodes || []).filter(n => n.value > 0);
+  if (!nodes.length) { wrap.innerHTML = '<div class="chart-error">No data</div>'; return; }
+  // Simple row-packed treemap
+  const total = nodes.reduce((s, n) => s + (n.value || 0), 0) || 1;
+  wrap.innerHTML = `<div class="grv-treemap" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr));grid-auto-rows:minmax(60px,auto);">${
+    nodes.map((n, i) => {
+      const area = Math.max(1, Math.round((n.value / total) * 40));
+      const span = Math.min(6, Math.max(1, Math.round(Math.sqrt(area))));
+      return `<div class="grv-tm-node" style="background:${PALETTE[i % PALETTE.length]};grid-column:span ${span};grid-row:span ${span};" title="${escapeHtml(n.label)}: ${n.value}">
+        <div>${escapeHtml(truncate(n.label, 18))}</div>
+        <div class="grv-tm-val">${Number(n.value).toLocaleString()} · ${n.pct}%</div>
+      </div>`;
+    }).join('')
+  }</div>`;
+}
+
+// ── Funnel: stacked diminishing bars ─────────────────────────
+function renderFunnel(id, d) {
+  const wrap = $(id).parentElement;
+  $(id).remove();
+  const max = Math.max(...(d.values || [1]));
+  wrap.innerHTML = `<div class="grv-funnel">${
+    (d.labels || []).map((lbl, i) => {
+      const v = d.values[i];
+      const widthPct = Math.max(20, (v / max) * 100);
+      return `<div class="grv-funnel-row" style="background:${PALETTE[i % PALETTE.length]};width:${widthPct}%;">
+        ${escapeHtml(truncate(lbl, 28))} — <strong>${Number(v).toLocaleString()}</strong>
+      </div>`;
+    }).join('')
+  }</div>`;
+}
+
+// ── Gauge: SVG arc ────────────────────────────────────────────
+function renderGauge(id, d) {
+  const wrap = $(id).parentElement;
+  $(id).remove();
+  const range = (d.max - d.min) || 1;
+  const pct = Math.max(0, Math.min(100, ((d.value - d.min) / range) * 100));
+  wrap.innerHTML = `
+    <div class="grv-gauge">
+      <div class="grv-gauge-val">${Number(d.value).toLocaleString()}</div>
+      <div class="grv-gauge-label">avg ${escapeHtml(d.label)} — range ${Number(d.min).toLocaleString()} to ${Number(d.max).toLocaleString()}</div>
+      <div class="grv-gauge-bar"><div class="grv-gauge-fill" style="width:${pct}%;"></div></div>
+    </div>`;
+}
+
+function renderKpiTile(id, d) {
+  const wrap = $(id).parentElement;
+  $(id).remove();
+  wrap.innerHTML = `
+    <div class="grv-gauge">
+      <div class="grv-gauge-val">${Number(d.value).toLocaleString()}</div>
+      <div class="grv-gauge-label">${escapeHtml(d.agg || 'sum')} of ${escapeHtml(d.label)}</div>
+    </div>`;
+}
+
+// ── Waterfall: floating bars ─────────────────────────────────
+function renderWaterfall(id, d) {
+  const steps = d.steps || [];
+  const allVals = steps.flatMap(s => [s.start, s.end]);
+  const min = Math.min(...allVals, 0), max = Math.max(...allVals);
+  const range = max - min || 1;
+  const wrap = $(id).parentElement;
+  $(id).remove();
+  wrap.innerHTML = `<div style="padding-top:6px;">${
+    steps.map(s => {
+      const startPct = ((Math.min(s.start, s.end) - min) / range) * 100;
+      const widthPct = (Math.abs(s.delta) / range) * 100;
+      const up = s.delta >= 0;
+      return `<div class="grv-wf-row">
+        <div class="grv-wf-label">${escapeHtml(truncate(s.label, 24))}</div>
+        <div style="flex:1;position:relative;height:18px;background:var(--surface2);border-radius:4px;">
+          <div class="grv-wf-bar" style="position:absolute;left:${startPct}%;width:${widthPct}%;background:${up?PALETTE[3]:PALETTE[5]};height:18px;"></div>
+        </div>
+        <div class="grv-wf-val">${up?'+':''}${Number(s.delta).toLocaleString()}</div>
+      </div>`;
+    }).join('')
+  }</div>`;
+}
+
+// ── Pareto: bar + cumulative line ────────────────────────────
+function renderPareto(id, d) {
+  _charts[id] = new Chart($(id).getContext('2d'), {
+    data: {
+      labels: (d.labels || []).map(String),
+      datasets: [
+        { type: 'bar', label: d.y_label || 'value', data: d.values || [],
+          backgroundColor: rgba(PALETTE[0], 0.75), borderRadius: 4, yAxisID: 'y' },
+        { type: 'line', label: 'cumulative %', data: d.cumulative_pct || [],
+          borderColor: PALETTE[5], backgroundColor: rgba(PALETTE[5], 0.1), fill: false,
+          tension: 0.3, pointRadius: 3, borderWidth: 2, yAxisID: 'y1' },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color:'var(--text3)', font:{size:10}, maxRotation: 45 } },
+        y:  { position: 'left',  grid: { color:'rgba(0,0,0,.04)' }, ticks: { color:'var(--text3)', font:{size:10} } },
+        y1: { position: 'right', grid: { display: false }, min: 0, max: 100, ticks: { color:'var(--text3)', font:{size:10}, callback: v => v + '%' } },
+      },
+    },
+  });
+}
+
+// ── Box: draw min/q1/median/q3/max as horizontal markers ─────
+function renderBox(id, d) {
+  const s = d.stats || {};
+  _charts[id] = new Chart($(id).getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['Min', 'Q1', 'Median', 'Mean', 'Q3', 'Max'],
+      datasets: [{
+        label: d.col || '',
+        data: [s.min, s.q1, s.median, s.mean, s.q3, s.max],
+        backgroundColor: [rgba(PALETTE[0],.6), rgba(PALETTE[1],.7), rgba(PALETTE[2],.9), rgba(PALETTE[3],.9), rgba(PALETTE[1],.7), rgba(PALETTE[5],.6)],
+        borderRadius: 5,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => `${c.label}: ${Number(c.raw).toLocaleString()}` } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color:'var(--text3)', font:{size:10} } },
+        y: { grid: { color:'rgba(0,0,0,.04)' }, ticks: { color:'var(--text3)', font:{size:10} } },
+      },
+    },
+  });
+}
+
+function renderDualAxis(id, d) {
+  _charts[id] = new Chart($(id).getContext('2d'), {
+    data: {
+      labels: (d.labels || []).map(String),
+      datasets: [
+        { type:'bar',  label: d.y1.label, data: d.y1.values, backgroundColor: rgba(PALETTE[0], 0.75), yAxisID: 'y1', borderRadius: 4 },
+        { type:'line', label: d.y2.label, data: d.y2.values, borderColor: PALETTE[5], backgroundColor: rgba(PALETTE[5], 0.1),
+          fill: false, tension: 0.3, pointRadius: 3, borderWidth: 2, yAxisID: 'y2' },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } },
+      scales: {
+        x:  { grid: { display: false }, ticks: { color:'var(--text3)', font:{size:10}, maxRotation: 35 } },
+        y1: { position: 'left',  grid: { color:'rgba(0,0,0,.04)' }, ticks: { color:'var(--text3)', font:{size:10} } },
+        y2: { position: 'right', grid: { display: false }, ticks: { color:'var(--text3)', font:{size:10} } },
+      },
+    },
+  });
+}
+
+// ── Insights / profiles / preview ────────────────────────────
+function buildInsights(ins) {
+  $('ins-count').textContent = ins.length + ' found';
+  $('adb-insights').innerHTML = ins.length
+    ? ins.map(i => `<div class="ins-card ${i.severity || 'info'}">
+        <div class="ins-icon">${i.icon || '💡'}</div>
+        <div><div class="ins-title">${escapeHtml(i.title)}</div><div class="ins-body">${escapeHtml(i.body)}</div></div>
+      </div>`).join('')
+    : '<div style="color:var(--text3);font-size:13px;padding:12px 0;grid-column:1/-1;">No anomalies detected — data looks clean!</div>';
+}
+
+function buildColProfiles(profs, numCols) {
+  $('col-count').textContent = profs.length + ' columns';
+  $('adb-col-grid').innerHTML = profs.map(p => {
+    const isNum = numCols.includes(p.name);
+    const compl = 100 - p.missing_pct;
+    const warn  = p.missing_pct > 10;
+    if (isNum && p.mean !== undefined) return `<div class="adb-col-card">
+      <div class="col-name"><span class="col-badge num">NUM</span><span>${escapeHtml(p.name)}</span></div>
+      <div class="col-row"><span>Mean</span><span class="col-val">${p.mean}</span></div>
+      <div class="col-row"><span>Median</span><span class="col-val">${p.median}</span></div>
+      <div class="col-row"><span>Std Dev</span><span class="col-val">${p.std}</span></div>
+      <div class="col-row"><span>Min / Max</span><span class="col-val">${p.min} / ${p.max}</span></div>
+      <div class="col-row"><span>Unique</span><span class="col-val">${p.unique.toLocaleString()}</span></div>
+      <div class="col-row"><span>Missing</span><span class="col-val">${p.missing} (${p.missing_pct}%)</span></div>
+      <div class="compl-bar"><div class="compl-fill${warn?' warn':''}" style="width:${compl}%"></div></div>
+    </div>`;
+    return `<div class="adb-col-card">
+      <div class="col-name"><span class="col-badge cat">CAT</span><span>${escapeHtml(p.name)}</span></div>
+      <div class="col-row"><span>Unique</span><span class="col-val">${p.unique.toLocaleString()}</span></div>
+      <div class="col-row"><span>Top value</span><span class="col-val">${escapeHtml(p.top_val || '—')}</span></div>
+      <div class="col-row"><span>Top count</span><span class="col-val">${(p.top_count||0).toLocaleString()}</span></div>
+      <div class="col-row"><span>Missing</span><span class="col-val">${p.missing} (${p.missing_pct}%)</span></div>
+      <div class="compl-bar"><div class="compl-fill${warn?' warn':''}" style="width:${compl}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function buildPreview(cols, rows, numCols) {
+  const n = Math.min(cols.length, 50);
+  const shown = cols.slice(0, n);
+  $('prev-count').textContent = `First ${rows.length} rows · ${cols.length} columns`;
+  $('adb-preview-tbl').innerHTML = `
+    <thead><tr>${shown.map(c => `<th>${escapeHtml(c)}</th>`).join('')}${cols.length>n?`<th>+${cols.length-n} more</th>`:''}</tr></thead>
+    <tbody>${rows.map(row => `<tr>${shown.map(c => {
+      const v = row[c];
+      if (v === null || v === undefined) return '<td class="td-null">—</td>';
+      if (numCols.includes(c)) return `<td class="td-num">${Number(v).toLocaleString()}</td>`;
+      return `<td>${escapeHtml(String(v))}</td>`;
+    }).join('')}${cols.length>n?'<td class="td-null">…</td>':''}</tr>`).join('')}</tbody>`;
+}
+
+// ── Card + helpers ───────────────────────────────────────────
+function makeCard(canvasId, label, sub, badge) {
+  const d = document.createElement('div');
+  d.className = 'adb-chart-card';
+  d.innerHTML = `
+    <div class="chart-label">${escapeHtml(label)}${badge ? `<span class="chart-type-badge">${escapeHtml(badge)}</span>` : ''}</div>
+    ${sub ? `<div class="chart-sub">${escapeHtml(sub)}</div>` : '<div class="chart-sub"></div>'}
+    <div class="chart-canvas-wrap"><canvas id="${canvasId}"></canvas></div>`;
+  return d;
+}
+function wrapOne(card) { const w = document.createElement('div'); w.className = 'adb-chart-grid-1'; w.appendChild(card); return w; }
+function escapeHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function truncate(s, n) { s = String(s || ''); return s.length <= n ? s : s.slice(0, n - 1) + '…'; }
+
+// ── Export ───────────────────────────────────────────────────
+function showToast(msg, ms = 2500) {
+  const t = $('export-toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, ms);
+}
+
+// Dropdown toggle
+function toggleExportMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = $('export-menu');
+  menu.classList.toggle('open');
+  if (menu.classList.contains('open')) {
+    setTimeout(() => document.addEventListener('click', closeExportMenuOnOutside), 0);
+  }
+}
+function closeExportMenu() {
+  $('export-menu').classList.remove('open');
+  document.removeEventListener('click', closeExportMenuOnOutside);
+}
+function closeExportMenuOnOutside(e) {
+  if (!e.target.closest('.export-wrap')) closeExportMenu();
+}
+
+// PNG export
+async function exportPNG() {
+  closeExportMenu();
+  showToast('Capturing dashboard...', 4000);
+  try {
+    const canvas = await html2canvas($('adb-export-area'), {
+      scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
+    });
+    const a = document.createElement('a');
+    a.download = `${(DASHBOARD_DATA?.file_name || 'dashboard').replace(/\.[^.]+$/,'')}_grivora.png`;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    showToast('PNG exported');
+  } catch (e) { showToast('Export failed: ' + e.message, 4000); }
+}
+
+// Print
+function printDashboard() {
+  closeExportMenu();
+  setTimeout(() => window.print(), 120);
+}
+
+// PDF export: branded cover + per-block pagination (no chart ever gets split)
+async function exportPDF() {
+  closeExportMenu();
+  if (!DASHBOARD_DATA) { showToast('Dashboard not ready yet', 2500); return; }
+  showToast('Generating PDF...', 10000);
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    const PAGE_W = pdf.internal.pageSize.getWidth();
+    const PAGE_H = pdf.internal.pageSize.getHeight();
+    const MARGIN = 28;
+    const CONTENT_W = PAGE_W - MARGIN * 2;
+    const CONTENT_H = PAGE_H - MARGIN * 2 - 30;
+
+    const sandbox = buildPdfSandbox();
+    document.body.appendChild(sandbox);
+    await new Promise(r => setTimeout(r, 120));
+
+    // Page 1: cover
+    const coverEl = sandbox.querySelector('.pdf-cover');
+    const coverCanvas = await html2canvas(coverEl, {
+      scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
+      windowWidth: coverEl.offsetWidth,
+    });
+    const coverScale = CONTENT_W / coverCanvas.width;
+    pdf.addImage(coverCanvas.toDataURL('image/jpeg', 0.94),
+      'JPEG', MARGIN, MARGIN, CONTENT_W, coverCanvas.height * coverScale);
+
+    // Pages 2+: dashboard blocks
+    const blocks = Array.from(sandbox.querySelectorAll('.pdf-block'));
+    let pageCursorY = MARGIN;
+    let pageIsBlank = true;
+
+    const openNewPage = () => {
+      pdf.addPage();
+      drawPageFrame(pdf, PAGE_W, MARGIN);
+      pageCursorY = MARGIN + 42;
+      pageIsBlank = true;
+    };
+    openNewPage(); // start page 2
+
+    for (const block of blocks) {
+      const canvas = await html2canvas(block, {
+        scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
+        windowWidth: block.offsetWidth,
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      const scale = CONTENT_W / canvas.width;
+      const imgH = canvas.height * scale;
+      const remaining = (PAGE_H - MARGIN - 30) - pageCursorY;
+
+      if (imgH <= remaining) {
+        pdf.addImage(imgData, 'JPEG', MARGIN, pageCursorY, CONTENT_W, imgH);
+        pageCursorY += imgH + 14;
+        pageIsBlank = false;
+      } else if (imgH <= CONTENT_H) {
+        openNewPage();
+        pdf.addImage(imgData, 'JPEG', MARGIN, pageCursorY, CONTENT_W, imgH);
+        pageCursorY += imgH + 14;
+        pageIsBlank = false;
+      } else {
+        // Block is taller than a page: slice it. Only happens for
+        // very long tables; charts are per-card and never this tall.
+        if (!pageIsBlank) openNewPage();
+        let yOffset = 0;
+        while (yOffset < canvas.height) {
+          const slicePx = Math.min(CONTENT_H / scale, canvas.height - yOffset);
+          const slice = document.createElement('canvas');
+          slice.width = canvas.width;
+          slice.height = slicePx;
+          const ctx = slice.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, slice.width, slice.height);
+          ctx.drawImage(canvas, 0, -yOffset);
+          const sliceData = slice.toDataURL('image/jpeg', 0.92);
+          const sliceH = slicePx * scale;
+          pdf.addImage(sliceData, 'JPEG', MARGIN, pageCursorY, CONTENT_W, sliceH);
+          pageCursorY += sliceH + 14;
+          yOffset += slicePx;
+          if (yOffset < canvas.height) openNewPage();
+        }
+        pageIsBlank = false;
+      }
+    }
+
+    // Add footers now that we know the final page count
+    const totalPages = pdf.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      pdf.setPage(i);
+      drawFooter(pdf, i, totalPages, PAGE_W, PAGE_H);
+    }
+
+    sandbox.remove();
+    const fname = `${(DASHBOARD_DATA?.file_name || 'dashboard').replace(/\.[^.]+$/,'')}_grivora_report.pdf`;
+    pdf.save(fname);
+    showToast('PDF exported');
+  } catch (err) {
+    console.error('PDF export error:', err);
+    showToast('PDF export failed: ' + err.message, 5000);
+  }
+}
+
+// Thin color band + title strip at the top of each non-cover page
+function drawPageFrame(pdf, PAGE_W, MARGIN) {
+  const stops = [
+    { c: [37, 99, 235],  x0: 0,              w: PAGE_W / 3 },
+    { c: [124, 58, 237], x0: PAGE_W / 3,     w: PAGE_W / 3 },
+    { c: [8, 145, 178],  x0: (PAGE_W * 2)/3, w: PAGE_W / 3 },
+  ];
+  stops.forEach(s => {
+    pdf.setFillColor(s.c[0], s.c[1], s.c[2]);
+    pdf.rect(s.x0, 0, s.w, 4, 'F');
+  });
+  pdf.setFontSize(9);
+  pdf.setTextColor(100, 116, 139);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('GRIVORA AI', MARGIN, MARGIN + 10);
+  pdf.setFont('helvetica', 'normal');
+  const title = (DASHBOARD_DATA?.file_name || 'Dashboard');
+  const truncTitle = title.length > 70 ? title.slice(0, 67) + '...' : title;
+  pdf.text(truncTitle, PAGE_W - MARGIN, MARGIN + 10, { align: 'right' });
+  pdf.setDrawColor(226, 232, 240);
+  pdf.setLineWidth(0.5);
+  pdf.line(MARGIN, MARGIN + 22, PAGE_W - MARGIN, MARGIN + 22);
+}
+
+function drawFooter(pdf, pageNumber, totalPages, PAGE_W, PAGE_H) {
+  const y = PAGE_H - 20;
+  pdf.setDrawColor(226, 232, 240);
+  pdf.setLineWidth(0.5);
+  pdf.line(28, y - 8, PAGE_W - 28, y - 8);
+  pdf.setFontSize(8);
+  pdf.setTextColor(148, 163, 184);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('Generated by Grivora AI - AI-Powered Data Intelligence', 28, y);
+  pdf.text(`Page ${pageNumber} of ${totalPages}`, PAGE_W - 28, y, { align: 'right' });
+}
+
+// Build an off-screen DOM tree used as the PDF source. Every .pdf-block
+// becomes an atomic placement unit, so charts never get split across pages.
+function buildPdfSandbox() {
+  const d = DASHBOARD_DATA;
+  const sandbox = document.createElement('div');
+  sandbox.className = 'pdf-sandbox';
+  sandbox.id = 'pdf-sandbox';
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+  // Cover page
+  const cover = document.createElement('div');
+  cover.className = 'pdf-cover';
+  cover.innerHTML = `
+    <div class="pdf-brand">
+      <div class="pdf-brand-logo">
+        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <rect x="7" y="9" width="18" height="16" rx="5" fill="#ffffff"/>
+          <circle cx="12" cy="16" r="2" fill="#2563eb"/>
+          <circle cx="20" cy="16" r="2" fill="#2563eb"/>
+          <rect x="13" y="20" width="6" height="1.5" rx="0.75" fill="#7c3aed"/>
+          <rect x="15" y="4" width="2" height="4" rx="1" fill="#ffffff"/>
+          <circle cx="16" cy="3" r="1.5" fill="#ffffff"/>
+        </svg>
+      </div>
+      <div>
+        <div class="pdf-brand-name">Grivora <span style="color:#7c3aed;">AI</span></div>
+        <div class="pdf-brand-tag">AI-Powered Data Intelligence Platform</div>
+      </div>
+    </div>
+
+    <div class="pdf-report-label">Automated Dashboard Report</div>
+    <h1 class="pdf-report-title">${escapeHtml(d.file_name || 'Dataset Analysis')}</h1>
+    <p class="pdf-report-sub">
+      This report was automatically generated by Grivora AI. Chart types were selected
+      by our AI based on your dataset's structure, then rendered using the full dataset.
+      All figures, visualizations, and insights below are computed directly from your data.
+    </p>
+
+    <div class="pdf-meta-grid">
+      <div class="pdf-meta-cell">
+        <div class="pdf-meta-label">Records</div>
+        <div class="pdf-meta-value">${(d.n_rows || 0).toLocaleString()}</div>
+      </div>
+      <div class="pdf-meta-cell">
+        <div class="pdf-meta-label">Columns</div>
+        <div class="pdf-meta-value">${d.n_cols || 0}</div>
+      </div>
+      <div class="pdf-meta-cell">
+        <div class="pdf-meta-label">Visualizations</div>
+        <div class="pdf-meta-value">${(d.charts || []).length}</div>
+      </div>
+      <div class="pdf-meta-cell">
+        <div class="pdf-meta-label">Generated</div>
+        <div class="pdf-meta-value" style="font-size:13px;">${dateStr}<br><span style="color:#64748b;font-weight:500;">${timeStr}</span></div>
+      </div>
+    </div>
+  `;
+  sandbox.appendChild(cover);
+
+  // Section wrap: each .pdf-block is one atomic paginated unit
+  const sectionWrap = document.createElement('div');
+  sectionWrap.className = 'pdf-section-wrap';
+
+  // Top header strip
+  const headerBlock = document.createElement('div');
+  headerBlock.className = 'pdf-block';
+  headerBlock.style.cssText = 'margin-bottom:18px;';
+  headerBlock.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:2px solid #0f172a;margin-bottom:8px;">
+      <div>
+        <div style="font-size:10px;color:#7c3aed;font-weight:700;letter-spacing:.14em;text-transform:uppercase;">Dashboard Report</div>
+        <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:800;color:#0f172a;margin-top:2px;">${escapeHtml(d.file_name || 'Dashboard')}</div>
+      </div>
+      <div style="text-align:right;font-size:11px;color:#64748b;font-weight:600;">${dateStr}</div>
+    </div>
+  `;
+  sectionWrap.appendChild(headerBlock);
+
+  // Walk every live section in order, split charts into individual blocks
+  const srcDashboard = $('adb-export-area');
+  const liveSections = srcDashboard.querySelectorAll('.adb-section');
+  liveSections.forEach(sec => {
+    const head = sec.querySelector('.adb-section-header');
+    if (head) {
+      const b = document.createElement('div');
+      b.className = 'pdf-block';
+      b.style.cssText = 'margin:18px 0 10px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;';
+      b.appendChild(head.cloneNode(true));
+      sectionWrap.appendChild(b);
+    }
+    const kpiGrid = sec.querySelector('.adb-kpi-grid');
+    if (kpiGrid) {
+      const b = document.createElement('div');
+      b.className = 'pdf-block';
+      b.style.cssText = 'margin-bottom:14px;';
+      b.appendChild(kpiGrid.cloneNode(true));
+      sectionWrap.appendChild(b);
+    }
+    const chartArea = sec.querySelector('#adb-chart-area');
+    if (chartArea) {
+      chartArea.querySelectorAll('.adb-chart-card').forEach(card => {
+        const b = document.createElement('div');
+        b.className = 'pdf-block';
+        b.style.cssText = 'margin-bottom:14px;';
+        b.appendChild(card.cloneNode(true));
+        sectionWrap.appendChild(b);
+      });
+    }
+    const insights = sec.querySelector('.adb-insights-grid');
+    if (insights) {
+      const b = document.createElement('div');
+      b.className = 'pdf-block';
+      b.style.cssText = 'margin-bottom:14px;';
+      b.appendChild(insights.cloneNode(true));
+      sectionWrap.appendChild(b);
+    }
+    const colGrid = sec.querySelector('.adb-col-grid');
+    if (colGrid) {
+      const b = document.createElement('div');
+      b.className = 'pdf-block';
+      b.style.cssText = 'margin-bottom:14px;';
+      b.appendChild(colGrid.cloneNode(true));
+      sectionWrap.appendChild(b);
+    }
+    const tblWrap = sec.querySelector('.adb-table-wrap');
+    if (tblWrap) {
+      const b = document.createElement('div');
+      b.className = 'pdf-block';
+      b.style.cssText = 'margin-bottom:14px;';
+      b.appendChild(tblWrap.cloneNode(true));
+      sectionWrap.appendChild(b);
+    }
+  });
+
+  sandbox.appendChild(sectionWrap);
+  return sandbox;
+}
+
+// ── Boot ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', loadDashboard);
+</script>
+{% endblock %}

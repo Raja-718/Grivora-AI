@@ -1,0 +1,58 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ML model files
+*.pkl
+
+# SQLite databases (auth store, OTP store)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Legacy user store — superseded by users.db
+auth_system/users.json
+auth_system/users.json.migrated
+
+# User uploads
+uploads/*
+!uploads/.gitkeep
+
+# Raw/processed data
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Build/dist
+*.egg-info/
+dist/
+build/
+
+# CatBoost training cache
+catboost_info/
+
+# Agent / IDE config
+.agents/
+.gemini/

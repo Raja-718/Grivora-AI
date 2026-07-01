@@ -1,0 +1,1049 @@
+{% extends "base.html" %}
+{% block title %}Grivora AI — Intelligent Data Platform{% endblock %}
+
+{% block head %}
+<style>
+/* ══════════════════════════════════════════════════
+   NEURAL DENDRITE CANVAS — full hero background
+   ══════════════════════════════════════════════════ */
+#neural-canvas {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  z-index:0;
+}
+
+/* Hero wrapper */
+.hero-section {
+  position:relative;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:120px 48px 90px;
+  overflow:hidden;
+}
+
+/* All hero content sits above canvas */
+.hero-content { position:relative; z-index:2; }
+
+/* Glass card — transparent, no background */
+.hero-glass {
+  position:relative;
+  z-index:2;
+  background:transparent;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  border:none;
+  border-radius:0;
+  padding:60px 64px 56px;
+  max-width:1100px;
+  margin:0 auto 56px;
+  box-shadow:none;
+}
+body:not(.light-mode) .hero-glass {
+  background:transparent;
+  border:none;
+  box-shadow:none;
+}
+
+/* ── Eye badge ── */
+.eye-badge {
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 24px;
+  border-radius:40px;
+  background:rgba(29,78,216,0.07);
+  border:1px solid rgba(29,78,216,0.20);
+  margin-bottom:36px;
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--accent);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  box-shadow:0 2px 20px rgba(29,78,216,0.10);
+}
+body:not(.light-mode) .eye-badge {
+  background:rgba(79,138,255,0.10);
+  border-color:rgba(79,138,255,0.28);
+  box-shadow:0 2px 20px rgba(96,165,250,0.15);
+}
+.eye-pulse {
+  width:28px; height:18px;
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.eye-pulse::before {
+  content:'';
+  position:absolute;
+  width:28px; height:18px;
+  border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+  border:1.5px solid var(--accent);
+}
+.eye-pulse::after {
+  content:'';
+  width:9px; height:9px;
+  border-radius:50%;
+  background:var(--accent);
+  animation:eye-blink 3s ease-in-out infinite;
+}
+@keyframes eye-blink {
+  0%,90%,100% { transform:scaleY(1); opacity:1; }
+  95%          { transform:scaleY(0.1); opacity:0.5; }
+}
+
+/* ── Headline ── */
+.hero-headline {
+  font-family:'Bricolage Grotesque','Inter',sans-serif;
+  font-size:clamp(28px,3.8vw,58px);
+  font-weight:800;
+  line-height:1.08;
+  letter-spacing:-0.03em;
+  color:var(--text);
+  margin-bottom:10px;
+  white-space:nowrap;
+}
+body:not(.light-mode) .hero-headline {
+  color:#e8f0ff;
+  text-shadow:0 0 80px rgba(96,165,250,0.18);
+}
+.hero-headline-gradient {
+  font-family:'Bricolage Grotesque','Inter',sans-serif;
+  font-size:clamp(28px,3.8vw,58px);
+  font-weight:800;
+  line-height:1.08;
+  letter-spacing:-0.03em;
+  margin-bottom:32px;
+  background:linear-gradient(135deg,#1d4ed8 0%,#7c3aed 45%,#0891b2 100%);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  background-size:200%;
+  animation:hero-grad-shift 5s ease infinite;
+  filter:drop-shadow(0 0 28px rgba(124,58,237,0.28));
+  white-space:nowrap;
+}
+body:not(.light-mode) .hero-headline-gradient {
+  background:linear-gradient(135deg,#60a5fa 0%,#a78bfa 45%,#22d3ee 100%);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  background-size:200%;
+  animation:hero-grad-shift 5s ease infinite;
+  filter:drop-shadow(0 0 32px rgba(167,139,250,0.35));
+}
+@keyframes hero-grad-shift {
+  0%,100% { background-position:0% 50%; }
+  50%      { background-position:100% 50%; }
+}
+
+/* ── Typing effect ── */
+.hero-typing-wrap {
+  font-size:22px;
+  font-family:'Bricolage Grotesque','Inter','DM Sans',sans-serif;
+  font-weight:500;
+  color:var(--text);
+  max-width:780px;
+  margin:0 auto 40px;
+  line-height:1.70;
+  letter-spacing:0.01em;
+  min-height:40px;
+}
+body:not(.light-mode) .hero-typing-wrap {
+  color:rgba(200,215,255,0.90);
+}
+#hero-typed::after {
+  content:'|';
+  display:inline-block;
+  animation:cursor-blink 0.72s step-end infinite;
+  color:var(--accent);
+  font-weight:200;
+  margin-left:2px;
+  opacity:0.9;
+}
+@keyframes cursor-blink {
+  0%,100%{opacity:1;} 50%{opacity:0;}
+}
+
+/* ── CTA buttons ── */
+.hero-ctas {
+  display:flex;
+  gap:14px;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin-bottom:44px;
+}
+
+/* ── Stat pills (below glass) ── */
+.hero-stats {
+  position:relative;
+  z-index:2;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:center;
+}
+
+/* ══════════════════════════════════════════════════
+   BELOW-HERO SECTIONS
+   ══════════════════════════════════════════════════ */
+
+/* Trusted-by strip */
+.trusted-strip {
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  padding:26px 48px;
+  background:var(--surface);
+}
+.trusted-inner {
+  max-width:1100px;
+  margin:0 auto;
+  display:flex;
+  align-items:center;
+  gap:28px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+
+/* 3-mode cards */
+.modes-grid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:22px;
+}
+
+/* How it works */
+.how-grid {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:28px;
+}
+
+/* Footer */
+.site-footer {
+  border-top:1px solid var(--border);
+  padding:32px 48px;
+  background:var(--surface);
+}
+.footer-inner {
+  max-width:1100px;
+  margin:0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:16px;
+}
+
+/* Responsive */
+@media(max-width:1100px) {
+  .modes-grid { grid-template-columns:1fr; max-width:560px; margin:0 auto; }
+  .how-grid   { grid-template-columns:repeat(2,1fr); }
+}
+@media(max-width:700px) {
+  .hero-glass { padding:36px 24px 32px; border-radius:20px; }
+  .hero-section { padding:100px 20px 60px; }
+  .how-grid   { grid-template-columns:1fr; }
+  .trusted-strip,.site-footer { padding-left:20px; padding-right:20px; }
+  .section { padding-left:20px !important; padding-right:20px !important; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ══════════════════════════════════
+     HERO  — Neural Dendrite BG
+══════════════════════════════════ -->
+<section class="hero-section">
+
+  <!-- Neural canvas fills entire hero -->
+  <canvas id="neural-canvas"></canvas>
+
+  <!-- Glass card wrapping headline + CTAs -->
+  <div class="hero-glass anim-1">
+
+    <!-- Eye badge -->
+    <div class="eye-badge">
+      <span class="eye-pulse"></span>
+      Neural AI · Processing Live
+    </div>
+
+    <!-- Headlines — two lines -->
+    <div class="hero-headline">Unified AI Platform for Data, Models,</div>
+    <div class="hero-headline-gradient" style="margin-bottom:32px;">and Intelligence.</div>
+
+    <!-- Subhead with typing effect -->
+    <div class="hero-typing-wrap">
+      <span id="hero-typed"></span>
+    </div>
+
+  </div>
+
+  <!-- Stat pills below glass -->
+  <div class="hero-stats anim-2">
+    <span class="stat-pill"><span class="stat-pill-dot" style="background:var(--accent);"></span>25+ Chart Types</span>
+    <span class="stat-pill"><span class="stat-pill-dot" style="background:var(--accent2);"></span>AI-Powered Agents</span>
+    <span class="stat-pill"><span class="stat-pill-dot" style="background:var(--success);"></span>Any Dataset Type</span>
+    <span class="stat-pill"><span class="stat-pill-dot" style="background:var(--accent3);"></span>Zero Configuration</span>
+    <span class="stat-pill"><span class="stat-pill-dot" style="background:var(--warning);"></span>ML Predictions</span>
+    <span class="stat-pill"><span class="stat-pill-dot" style="background:var(--danger);"></span>BI Dashboards</span>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════
+     TRUSTED STRIP
+══════════════════════════════════ -->
+<div class="trusted-strip">
+  <div class="trusted-inner">
+    <span class="t-label" style="color:var(--text4);white-space:nowrap;">Works with data from</span>
+    {% for d in ['Healthcare','Finance','Education','Retail','Manufacturing','HR & Payroll','Social Media','Research','Logistics','Real Estate'] %}
+    <span style="font-size:13px;font-weight:600;color:var(--text3);white-space:nowrap;">{{ d }}</span>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     3 PLATFORM MODES
+══════════════════════════════════ -->
+<section id="modes" class="section" style="padding:80px 48px;">
+
+  <div class="reveal" style="text-align:center;margin-bottom:60px;">
+    <span class="chip chip-blue" style="margin-bottom:18px;">Platform Modes</span>
+    <h2 class="t-heading" style="font-size:clamp(28px,4vw,48px);margin-bottom:16px;">Three Powerful Workflows</h2>
+    <p style="color:var(--text2);font-size:16px;max-width:480px;margin:0 auto;line-height:1.75;">
+      Each mode is purpose-built for a distinct analytical use case.
+    </p>
+  </div>
+
+  <div class="modes-grid" style="max-width:1280px;margin:0 auto;">
+
+    <!-- Data Analysis -->
+    <a href="/analysis" class="scenario-card s-blue reveal reveal-d1">
+      <div class="scenario-preview" style="background:linear-gradient(145deg,#eef4ff,#dde8ff);">
+        <svg viewBox="0 0 420 210" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+          <rect x="16" y="12" width="388" height="186" rx="10" fill="white" opacity="0.92"/>
+          <rect x="16" y="12" width="388" height="30" rx="10" fill="#2563eb" opacity="0.12"/>
+          <text x="30" y="30" font-size="9" fill="#2563eb" font-weight="700" font-family="sans-serif">PRODUCT</text>
+          <text x="120" y="30" font-size="9" fill="#2563eb" font-weight="700" font-family="sans-serif">SALES</text>
+          <text x="190" y="30" font-size="9" fill="#2563eb" font-weight="700" font-family="sans-serif">REGION</text>
+          <text x="270" y="30" font-size="9" fill="#2563eb" font-weight="700" font-family="sans-serif">DATE</text>
+          <text x="340" y="30" font-size="9" fill="#2563eb" font-weight="700" font-family="sans-serif">STATUS</text>
+          {% for i in range(4) %}
+          <rect x="16" y="{{ 44+i*26 }}" width="388" height="25" fill="{{ '#f8faff' if i%2==0 else 'white' }}" opacity="0.8"/>
+          <rect x="30"  y="{{ 52+i*26 }}" width="{{ [52,44,58,46][i] }}" height="6" rx="3" fill="#94a3b8" opacity="0.5"/>
+          <rect x="120" y="{{ 52+i*26 }}" width="{{ [40,52,36,48][i] }}" height="6" rx="3" fill="#2563eb" opacity="{{ [0.7,0.5,0.8,0.6][i] }}"/>
+          <rect x="190" y="{{ 52+i*26 }}" width="{{ [48,44,52,40][i] }}" height="6" rx="3" fill="#94a3b8" opacity="0.4"/>
+          <rect x="270" y="{{ 52+i*26 }}" width="48" height="6" rx="3" fill="#94a3b8" opacity="0.35"/>
+          <rect x="340" y="{{ 50+i*26 }}" width="38" height="10" rx="5" fill="{{ ['#d1fae5','#fef3c7','#d1fae5','#fee2e2'][i] }}"/>
+          <text x="{{ [345,344,345,344][i] }}" y="{{ 58+i*26 }}" font-size="7" fill="{{ ['#059669','#d97706','#059669','#dc2626'][i] }}" font-weight="700" font-family="sans-serif">{{ ['Active','Pending','Active','Closed'][i] }}</text>
+          {% endfor %}
+          <rect x="20" y="152" width="82" height="38" rx="7" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+          <text x="30" y="165" font-size="7" fill="#6b7280" font-family="sans-serif">Records</text>
+          <text x="30" y="180" font-size="13" fill="#2563eb" font-weight="800" font-family="sans-serif">12,847</text>
+          <rect x="112" y="152" width="82" height="38" rx="7" fill="#f5f3ff" stroke="#ddd6fe" stroke-width="1"/>
+          <text x="122" y="165" font-size="7" fill="#6b7280" font-family="sans-serif">Avg Value</text>
+          <text x="122" y="180" font-size="13" fill="#7c3aed" font-weight="800" font-family="sans-serif">₹4,230</text>
+          <rect x="204" y="152" width="82" height="38" rx="7" fill="#ecfdf5" stroke="#bbf7d0" stroke-width="1"/>
+          <text x="214" y="165" font-size="7" fill="#6b7280" font-family="sans-serif">Complete</text>
+          <text x="214" y="180" font-size="13" fill="#059669" font-weight="800" font-family="sans-serif">98.4%</text>
+          <rect x="296" y="152" width="100" height="38" rx="7" fill="#fff7ed" stroke="#fed7aa" stroke-width="1"/>
+          <text x="306" y="165" font-size="7" fill="#6b7280" font-family="sans-serif">Missing</text>
+          <text x="306" y="180" font-size="13" fill="#d97706" font-weight="800" font-family="sans-serif">234 cells</text>
+        </svg>
+      </div>
+      <div class="scenario-body">
+        <span class="scenario-tag" style="color:var(--accent);background:rgba(37,99,235,0.08);border-color:rgba(37,99,235,0.2);">01 · Data Analysis</span>
+        <div class="t-heading" style="font-size:20px;margin-bottom:10px;line-height:1.2;">Explore, Clean &amp; Profile Any Dataset</div>
+        <p style="font-size:13.5px;color:var(--text2);line-height:1.65;margin-bottom:20px;">Upload any file and instantly get statistical profiles, data quality reports, interactive charts, and AI-powered cleaning suggestions.</p>
+        <div class="scenario-features">
+          <div class="scenario-feature">Automated profiling &amp; statistics</div>
+          <div class="scenario-feature">Missing value &amp; outlier detection</div>
+          <div class="scenario-feature">25+ interactive chart types</div>
+          <div class="scenario-feature">AI chat in plain English</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span class="btn btn-primary" style="font-size:13px;padding:9px 20px;">Open Studio →</span>
+          <span class="s-arrow">↗</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Predictive Modeling -->
+    <a href="/predict" class="scenario-card s-purple reveal reveal-d2">
+      <div class="scenario-preview" style="background:linear-gradient(145deg,#f5f3ff,#ede9fe);">
+        <svg viewBox="0 0 420 210" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+          <rect x="16" y="12" width="388" height="186" rx="10" fill="white" opacity="0.88"/>
+          <rect x="24" y="20" width="68" height="30" rx="7" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.2"/>
+          <text x="36" y="32" font-size="8" fill="#7c3aed" font-weight="700" font-family="sans-serif">Input</text>
+          <text x="30" y="43" font-size="6.5" fill="#a78bfa" font-family="sans-serif">CSV/Excel</text>
+          <line x1="92" y1="35" x2="116" y2="35" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <rect x="116" y="20" width="74" height="30" rx="7" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.2"/>
+          <text x="127" y="32" font-size="8" fill="#7c3aed" font-weight="700" font-family="sans-serif">Process</text>
+          <text x="122" y="43" font-size="6.5" fill="#a78bfa" font-family="sans-serif">Feature Eng.</text>
+          <line x1="190" y1="35" x2="216" y2="35" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <rect x="216" y="20" width="68" height="30" rx="7" fill="#7c3aed" stroke="#7c3aed"/>
+          <text x="228" y="32" font-size="8" fill="white" font-weight="700" font-family="sans-serif">Model</text>
+          <text x="222" y="43" font-size="6.5" fill="#ddd6fe" font-family="sans-serif">RandomForest</text>
+          <line x1="284" y1="35" x2="308" y2="35" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <rect x="308" y="20" width="80" height="30" rx="7" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.2"/>
+          <text x="322" y="32" font-size="8" fill="#7c3aed" font-weight="700" font-family="sans-serif">Predict</text>
+          <text x="312" y="43" font-size="6.5" fill="#a78bfa" font-family="sans-serif">+ Explain</text>
+          <rect x="20" y="60" width="250" height="130" rx="8" fill="#fafafa" stroke="#e5e7eb" stroke-width="1"/>
+          <text x="32" y="76" font-size="8" fill="#6b7280" font-weight="600" font-family="sans-serif">Revenue Forecast</text>
+          <polyline points="32,156 62,140 92,144 122,126 152,130 182,112 212,108 242,96" fill="none" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <polyline points="32,156 62,145 92,136 122,120 152,116 182,106" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round"/>
+          <rect x="182" y="62" width="78" height="132" fill="rgba(124,58,237,0.04)"/>
+          <line x1="182" y1="62" x2="182" y2="192" stroke="#c4b5fd" stroke-width="1" stroke-dasharray="3,2"/>
+          <text x="186" y="74" font-size="7" fill="#7c3aed" font-family="sans-serif">Forecast</text>
+          <rect x="282" y="60" width="120" height="50" rx="7" fill="#f5f3ff" stroke="#ddd6fe" stroke-width="1"/>
+          <text x="294" y="76" font-size="7" fill="#6b7280" font-family="sans-serif">Accuracy</text>
+          <text x="294" y="96" font-size="16" fill="#7c3aed" font-weight="800" font-family="sans-serif">94.2%</text>
+          <rect x="282" y="120" width="120" height="50" rx="7" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1"/>
+          <text x="294" y="136" font-size="7" fill="#6b7280" font-family="sans-serif">RMSE</text>
+          <text x="294" y="156" font-size="16" fill="#059669" font-weight="800" font-family="sans-serif">0.032</text>
+        </svg>
+      </div>
+      <div class="scenario-body">
+        <span class="scenario-tag" style="color:var(--accent2);background:rgba(124,58,237,0.08);border-color:rgba(124,58,237,0.2);">02 · Predictive Modeling</span>
+        <div class="t-heading" style="font-size:20px;margin-bottom:10px;line-height:1.2;">Train Models &amp; Forecast Outcomes</div>
+        <p style="font-size:13.5px;color:var(--text2);line-height:1.65;margin-bottom:20px;">Build ML models on your data. Get visual forecasts with confidence bands and plain-English explanations.</p>
+        <div class="scenario-features">
+          <div class="scenario-feature">Auto ML model selection</div>
+          <div class="scenario-feature">Visual forecasts with bands</div>
+          <div class="scenario-feature">Feature importance &amp; SHAP</div>
+          <div class="scenario-feature">AI explains results simply</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span class="btn" style="font-size:13px;padding:9px 20px;background:var(--accent2);color:#fff;border:none;box-shadow:0 4px 16px var(--accent2-glow);">Open Studio →</span>
+          <span class="s-arrow">↗</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Business Intelligence -->
+    <a href="/bi" class="scenario-card s-cyan reveal reveal-d3">
+      <div class="scenario-preview" style="background:linear-gradient(145deg,#ecfeff,#cffafe);">
+        <svg viewBox="0 0 420 210" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+          <rect x="16" y="12" width="388" height="186" rx="10" fill="white" opacity="0.9"/>
+          <rect x="20" y="20" width="86" height="44" rx="7" fill="#ecfeff" stroke="#a5f3fc" stroke-width="1"/>
+          <text x="30" y="34" font-size="7" fill="#0e7490" font-family="sans-serif">Revenue</text>
+          <text x="30" y="52" font-size="15" fill="#0891b2" font-weight="800" font-family="sans-serif">₹2.4M</text>
+          <rect x="116" y="20" width="86" height="44" rx="7" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1"/>
+          <text x="126" y="34" font-size="7" fill="#166534" font-family="sans-serif">Growth</text>
+          <text x="126" y="52" font-size="15" fill="#16a34a" font-weight="800" font-family="sans-serif">+18.4%</text>
+          <rect x="212" y="20" width="86" height="44" rx="7" fill="#fff7ed" stroke="#fed7aa" stroke-width="1"/>
+          <text x="222" y="34" font-size="7" fill="#9a3412" font-family="sans-serif">Orders</text>
+          <text x="222" y="52" font-size="15" fill="#ea580c" font-weight="800" font-family="sans-serif">8,492</text>
+          <rect x="308" y="20" width="86" height="44" rx="7" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1"/>
+          <text x="318" y="34" font-size="7" fill="#6b21a8" font-family="sans-serif">NPS</text>
+          <text x="318" y="52" font-size="15" fill="#7c3aed" font-weight="800" font-family="sans-serif">72</text>
+          <rect x="20" y="72" width="190" height="118" rx="7" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+          <text x="32" y="86" font-size="8" fill="#64748b" font-weight="600" font-family="sans-serif">Sales by Region</text>
+          {% for i,h in [(0,34),(1,48),(2,58),(3,40),(4,68),(5,50)] %}
+          <rect x="{{ 32+i*26 }}" y="{{ 148-h }}" width="16" height="{{ h }}" rx="2" fill="#0891b2" opacity="{{ 0.5+i*0.08 }}"/>
+          {% endfor %}
+          <rect x="220" y="72" width="184" height="118" rx="7" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+          <text x="232" y="86" font-size="8" fill="#64748b" font-weight="600" font-family="sans-serif">Category Mix</text>
+          <circle cx="312" cy="140" r="34" fill="none" stroke="#0891b2" stroke-width="16" stroke-dasharray="80 54" transform="rotate(-90 312 140)"/>
+          <circle cx="312" cy="140" r="34" fill="none" stroke="#7c3aed" stroke-width="16" stroke-dasharray="34 100" transform="rotate(62 312 140)"/>
+          <circle cx="312" cy="140" r="34" fill="none" stroke="#f59e0b" stroke-width="16" stroke-dasharray="20 114" transform="rotate(152 312 140)"/>
+          <circle cx="312" cy="140" r="18" fill="white"/>
+          <text x="306" y="138" font-size="9" fill="#0e7490" font-weight="800" font-family="sans-serif">44%</text>
+        </svg>
+      </div>
+      <div class="scenario-body">
+        <span class="scenario-tag" style="color:var(--accent3);background:rgba(8,145,178,0.08);border-color:rgba(8,145,178,0.2);">03 · Business Intelligence</span>
+        <div class="t-heading" style="font-size:20px;margin-bottom:10px;line-height:1.2;">KPI Dashboards &amp; Executive Insights</div>
+        <p style="font-size:13.5px;color:var(--text2);line-height:1.65;margin-bottom:20px;">Create live KPI dashboards, track business metrics, and generate AI-written executive reports automatically.</p>
+        <div class="scenario-features">
+          <div class="scenario-feature">Auto KPI detection &amp; tracking</div>
+          <div class="scenario-feature">Multi-dataset comparison</div>
+          <div class="scenario-feature">AI executive summary reports</div>
+          <div class="scenario-feature">Export to PDF / HTML</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span class="btn" style="font-size:13px;padding:9px 20px;background:var(--accent3);color:#fff;border:none;box-shadow:0 4px 16px rgba(8,145,178,0.25);">Open Studio →</span>
+          <span class="s-arrow">↗</span>
+        </div>
+      </div>
+    </a>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     HOW IT WORKS
+══════════════════════════════════ -->
+<section style="background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:72px 48px;">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div class="reveal" style="text-align:center;margin-bottom:52px;">
+      <span class="chip chip-purple" style="margin-bottom:16px;">How It Works</span>
+      <h2 class="t-heading" style="font-size:34px;">From Upload to Insight in Minutes</h2>
+    </div>
+    <div class="how-grid">
+      {% for s in [('01','⬆️','Upload Any File','Drop a CSV or Excel file — no prep needed. Any format, any domain.'),('02','🤖','AI Reads Your Data','Smart agents detect column types, structure, and domain automatically.'),('03','📊','Charts Auto-Generate','25+ chart types rendered instantly from your real column names.'),('04','💬','Ask &amp; Predict','Chat in plain English, run ML models, and export your insights.')] %}
+      <div class="reveal reveal-d{{ loop.index }}" style="text-align:center;">
+        <div style="width:54px;height:54px;border-radius:15px;background:var(--surface2);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 14px;">{{ s[1] }}</div>
+        <div class="t-label" style="margin-bottom:7px;color:var(--accent);">Step {{ s[0] }}</div>
+        <div class="t-heading" style="font-size:15px;margin-bottom:7px;">{{ s[2] }}</div>
+        <p style="font-size:13px;color:var(--text2);line-height:1.65;">{{ s[3] }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     SUPPORTED DATASETS
+══════════════════════════════════ -->
+<section class="section" style="padding:80px 48px;text-align:center;">
+  <div class="reveal" style="max-width:780px;margin:0 auto;">
+    <span class="chip chip-cyan" style="margin-bottom:20px;">Universal Compatibility</span>
+    <h2 class="t-heading" style="font-size:34px;margin-bottom:14px;">Works With Any Dataset</h2>
+    <p style="color:var(--text2);margin-bottom:36px;font-size:16px;line-height:1.75;">Grivora AI auto-detects column types, adapts its charts, and tailors analysis to your specific domain — no configuration required.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;">
+      {% for item in [('🏪','Sales'),('🏫','Education'),('🏥','Healthcare'),('📱','Social Media'),('💹','Finance'),('👥','Human Resources'),('🛒','E-commerce'),('🏭','Manufacturing'),('🗳️','Survey Data'),('🌍','Geographic'),('🏋️','Sports'),('📊','Marketing'),('🔬','Research'),('🏗️','Construction'),('✈️','Logistics'),('📡','Telecom')] %}
+      <span class="stat-pill" style="gap:8px;padding:9px 16px;font-size:13px;"><span>{{ item[0] }}</span>{{ item[1] }}</span>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     FINAL CTA
+══════════════════════════════════ -->
+<section style="padding:80px 48px;text-align:center;position:relative;overflow:hidden;">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,var(--accent-glow),transparent 65%);pointer-events:none;"></div>
+  <div class="reveal" style="position:relative;max-width:620px;margin:0 auto;">
+    <h2 class="t-heading" style="font-size:clamp(26px,4vw,44px);margin-bottom:18px;line-height:1.1;">Ready to Transform Your Data?</h2>
+    <p style="color:var(--text2);font-size:17px;line-height:1.75;margin-bottom:38px;">Upload your first dataset today. No account required, no credit card, no setup.</p>
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">
+      <a href="/upload" class="btn btn-primary" style="font-size:15px;padding:14px 34px;border-radius:14px;">Start for Free →</a>
+      <a href="/analysis" class="btn btn-secondary" style="font-size:15px;padding:14px 28px;border-radius:14px;">View Demo</a>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     FOOTER
+══════════════════════════════════ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <svg width="26" height="26" viewBox="0 0 34 34" fill="none"><rect width="34" height="34" rx="10" fill="url(#fg-foot)"/><path d="M6 17 C6 17 10 10 17 10 C24 10 28 17 28 17 C28 17 24 24 17 24 C10 24 6 17 6 17Z" stroke="white" stroke-width="1.4" fill="none" opacity="0.7"/><circle cx="17" cy="17" r="4.5" fill="white" opacity="0.95"/><circle cx="17" cy="17" r="2.2" fill="url(#fg-foot)"/><circle cx="18.5" cy="15.5" r="1.1" fill="white" opacity="0.6"/><defs><linearGradient id="fg-foot" x1="0" y1="0" x2="34" y2="34"><stop offset="0%" stop-color="#1d4ed8"/><stop offset="50%" stop-color="#6d28d9"/><stop offset="100%" stop-color="#0e7490"/></linearGradient></defs></svg>
+      <span style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:16px;letter-spacing:-0.03em;color:var(--text);">Grivora <span style="font-weight:400;opacity:0.6;">AI</span></span>
+    </div>
+    <div style="font-size:13px;color:var(--text3);">© 2025 Grivora AI. Intelligent data analysis platform.</div>
+    <div style="display:flex;gap:20px;">
+      <a href="/analysis" style="font-size:13px;color:var(--text3);">Data Analysis</a>
+      <a href="/predict" style="font-size:13px;color:var(--text3);">Predictive ML</a>
+      <a href="/bi" style="font-size:13px;color:var(--text3);">Business Intel</a>
+    </div>
+  </div>
+</footer>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Typing effect for hero subhead ── */
+(function(){
+  const el = document.getElementById('hero-typed');
+  const text = 'Analyze data, train models, and build dashboards with an integrated AI-driven workflow.';
+  let i = 0;
+  function type(){
+    if(i <= text.length){
+      el.textContent = text.slice(0, i);
+      i++;
+      setTimeout(type, i === text.length ? 0 : 38);
+    }
+  }
+  // start after a short delay so page renders first
+  setTimeout(type, 900);
+})();
+</script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   GRIVORA AI — PREMIUM NEURAL DENDRITE ANIMATION v3.0
+   Advanced AI brain simulation:
+   · Multi-layer depth nodes (soma + dendrites)
+   · Curved bezier dendrite branches
+   · Multi-signal cascades along paths
+   · Energy burst on node activation
+   · Trailing signal comet tails
+   · Theme-aware color system (light/dark)
+   · Mouse-reactive field distortion
+   · Periodic cluster firings
+═══════════════════════════════════════════════════════════════════ */
+(function(){
+  const canvas = document.getElementById('neural-canvas');
+  const hero   = canvas.parentElement;
+  const ctx    = canvas.getContext('2d');
+  let W, H, mouse = {x:-9999, y:-9999};
+  let nodes=[], edges=[], signals=[], bursts=[], lastRebuild=0;
+  let animFrame, rafRunning=false;
+
+  /* ── theme ── */
+  const isLight = () => document.body.classList.contains('light-mode');
+
+  function palette(){
+    return isLight() ? {
+      bg:          null,
+      axon:        [29,78,216],
+      axonAlt:     [124,58,237],
+      axonAlt2:    [8,145,178],
+      soma:        [255,255,255],
+      somaStroke:  [29,78,216],
+      soma2:       [124,58,237],
+      nucleus:     [29,78,216],
+      sig1:        [124,58,237],
+      sig2:        [8,145,178],
+      sig3:        [29,78,216],
+      burst:       [124,58,237],
+      burstOuter:  [29,78,216],
+    } : {
+      bg:          null,
+      axon:        [96,165,250],
+      axonAlt:     [167,139,250],
+      axonAlt2:    [34,211,238],
+      soma:        [10,18,40],
+      somaStroke:  [96,165,250],
+      soma2:       [167,139,250],
+      nucleus:     [96,165,250],
+      sig1:        [167,139,250],
+      sig2:        [34,211,238],
+      sig3:        [96,165,250],
+      burst:       [167,139,250],
+      burstOuter:  [96,165,250],
+    };
+  }
+
+  const rgb  = (c,a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+  const lerp = (a,b,t) => a+(b-a)*t;
+
+  /* ── resize ── */
+  function resize(){
+    W = canvas.width  = hero.offsetWidth;
+    H = canvas.height = hero.offsetHeight;
+  }
+
+  /* ═══════════════════════════════════
+     NODE  — soma (cell body)
+  ═══════════════════════════════════ */
+  class Node {
+    constructor(x,y,tier){
+      this.x  = x; this.y = y;
+      this.tier = tier; // 0=hub 1=mid 2=leaf
+      this.r  = tier===0 ? 5+Math.random()*3
+               : tier===1 ? 3+Math.random()*2.5
+               : 2+Math.random()*1.5;
+      this.vx = (Math.random()-.5)*(tier===0?0.18:0.28);
+      this.vy = (Math.random()-.5)*(tier===0?0.18:0.28);
+      this.pt = Math.random()*Math.PI*2;
+      this.ps = 0.012+Math.random()*0.018;
+      this.energy = 0;       // activation glow 0-1
+      this.energyDecay = 0.015;
+      this.colorVariant = Math.floor(Math.random()*3); // 0=blue 1=purple 2=cyan
+    }
+    activate(){ this.energy = 1.0; }
+    update(){
+      /* mouse repulsion */
+      const dx=this.x-mouse.x, dy=this.y-mouse.y;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<120){
+        const force=(120-dist)/120*0.4;
+        this.vx+=dx/dist*force; this.vy+=dy/dist*force;
+      }
+      /* damping */
+      this.vx*=0.995; this.vy*=0.995;
+      this.x+=this.vx; this.y+=this.vy;
+      if(this.x<20||this.x>W-20) this.vx*=-1;
+      if(this.y<20||this.y>H-20) this.vy*=-1;
+      this.x=Math.max(20,Math.min(W-20,this.x));
+      this.y=Math.max(20,Math.min(H-20,this.y));
+      this.pt+=this.ps;
+      this.energy=Math.max(0,this.energy-this.energyDecay);
+    }
+    draw(){
+      const p   = palette();
+      const pls = 0.5+0.5*Math.sin(this.pt);
+      const en  = this.energy;
+      const col = this.colorVariant===0?p.axon:this.colorVariant===1?p.axonAlt:p.axonAlt2;
+      const sc  = this.colorVariant===0?p.somaStroke:this.colorVariant===1?p.soma2:p.axonAlt2;
+
+      /* ── outer energy ring (only when active) ── */
+      if(en>0.01){
+        const rOuter = this.r+8+en*16;
+        const g3=ctx.createRadialGradient(this.x,this.y,this.r,this.x,this.y,rOuter);
+        g3.addColorStop(0, rgb(col, en*0.55));
+        g3.addColorStop(1, rgb(col, 0));
+        ctx.beginPath(); ctx.arc(this.x,this.y,rOuter,0,Math.PI*2);
+        ctx.fillStyle=g3; ctx.fill();
+      }
+
+      /* ── ambient glow ── */
+      const gR=this.r+6+pls*5;
+      const grd=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,gR);
+      grd.addColorStop(0, rgb(col, (0.10+pls*0.08+en*0.15)));
+      grd.addColorStop(1, rgb(col, 0));
+      ctx.beginPath(); ctx.arc(this.x,this.y,gR,0,Math.PI*2);
+      ctx.fillStyle=grd; ctx.fill();
+
+      /* ── soma body ── */
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+      ctx.fillStyle   = rgb(p.soma, isLight()?0.92:0.85);
+      ctx.strokeStyle = rgb(sc, 0.6+pls*0.25+en*0.35);
+      ctx.lineWidth   = 1.0+en*1.2;
+      ctx.fill(); ctx.stroke();
+
+      /* ── nucleus ── */
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r*0.42, 0, Math.PI*2);
+      ctx.fillStyle = rgb(col, 0.65+pls*0.30+en*0.35);
+      ctx.fill();
+
+      /* ── hub ring (tier-0 only) ── */
+      if(this.tier===0){
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r+2.5+pls*1.5, 0, Math.PI*2);
+        ctx.strokeStyle = rgb(sc, 0.18+pls*0.10);
+        ctx.lineWidth=0.8; ctx.stroke();
+      }
+    }
+  }
+
+  /* ═══════════════════════════════════
+     EDGE  — bezier dendrite branch
+  ═══════════════════════════════════ */
+  class Edge {
+    constructor(a,b,dist){
+      this.a=a; this.b=b; this.dist=dist;
+      /* control point offset for bezier curvature */
+      const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+      const perp=Math.atan2(b.y-a.y,b.x-a.x)+Math.PI/2;
+      const curve=(Math.random()-.5)*dist*0.45;
+      this.cx=mx+Math.cos(perp)*curve;
+      this.cy=my+Math.sin(perp)*curve;
+      this.maxDist=dist; // snapshot at creation
+      this.colorVariant = Math.floor(Math.random()*3);
+    }
+    draw(maxDist){
+      const p   = palette();
+      const d   = Math.hypot(this.a.x-this.b.x, this.a.y-this.b.y);
+      const alpha= Math.max(0, (1-d/maxDist)*(isLight()?0.11:0.16));
+      if(alpha<0.005) return;
+      const col=this.colorVariant===0?p.axon:this.colorVariant===1?p.axonAlt:p.axonAlt2;
+      const mx=(this.a.x+this.b.x)/2, my=(this.a.y+this.b.y)/2;
+      const perp=Math.atan2(this.b.y-this.a.y,this.b.x-this.a.x)+Math.PI/2;
+      const c2  =(Math.random()-.5)*0.1;  // micro-wobble
+      const cx=this.cx+mx*0.001, cy=this.cy+my*0.001;
+      ctx.beginPath();
+      ctx.moveTo(this.a.x, this.a.y);
+      ctx.quadraticCurveTo(cx+c2, cy+c2, this.b.x, this.b.y);
+      ctx.strokeStyle = rgb(col, alpha);
+      ctx.lineWidth   = 0.6+(1-d/maxDist)*0.6;
+      ctx.stroke();
+    }
+  }
+
+  /* ═══════════════════════════════════
+     SIGNAL  — traveling pulse with comet tail
+  ═══════════════════════════════════ */
+  class Signal {
+    constructor(fromNode, toNode, edge, cascade=false){
+      this.from=fromNode; this.to=toNode; this.edge=edge;
+      this.t=0;
+      this.speed=0.004+Math.random()*0.007;
+      this.done=false;
+      this.cascade=cascade;
+      this.colorType=Math.floor(Math.random()*3);
+      this.size=2.8+Math.random()*2.2;
+      this.tail=[]; // history of positions for comet trail
+      this.maxTail=18;
+    }
+    _pos(t){
+      /* quadratic bezier position */
+      const mt=1-t;
+      return {
+        x: mt*mt*this.from.x + 2*mt*t*this.edge.cx + t*t*this.to.x,
+        y: mt*mt*this.from.y + 2*mt*t*this.edge.cy + t*t*this.to.y,
+      };
+    }
+    update(){
+      this.t+=this.speed;
+      if(this.t>=1){this.t=1;this.done=true;this.to.activate();}
+      const pos=this._pos(this.t);
+      this.tail.unshift({x:pos.x,y:pos.y});
+      if(this.tail.length>this.maxTail) this.tail.pop();
+    }
+    draw(){
+      const p=palette();
+      const col=this.colorType===0?p.sig1:this.colorType===1?p.sig2:p.sig3;
+      if(!this.tail.length) return;
+      const head=this.tail[0];
+
+      /* ── comet tail ── */
+      for(let i=1;i<this.tail.length;i++){
+        const frac=1-(i/this.tail.length);
+        const a=frac*frac*0.75;
+        if(a<0.01) break;
+        ctx.beginPath();
+        ctx.arc(this.tail[i].x, this.tail[i].y, this.size*(frac*0.7), 0, Math.PI*2);
+        ctx.fillStyle=rgb(col,a);
+        ctx.fill();
+      }
+
+      /* ── outer glow ── */
+      const g=ctx.createRadialGradient(head.x,head.y,0,head.x,head.y,this.size*4.5);
+      g.addColorStop(0, rgb(col,0.75));
+      g.addColorStop(0.4, rgb(col,0.30));
+      g.addColorStop(1, rgb(col,0));
+      ctx.beginPath(); ctx.arc(head.x,head.y,this.size*4.5,0,Math.PI*2);
+      ctx.fillStyle=g; ctx.fill();
+
+      /* ── core head ── */
+      ctx.beginPath(); ctx.arc(head.x,head.y,this.size,0,Math.PI*2);
+      ctx.fillStyle=rgb(col,1.0); ctx.fill();
+
+      /* ── bright specular highlight ── */
+      ctx.beginPath(); ctx.arc(head.x-this.size*0.3, head.y-this.size*0.3, this.size*0.45,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.fill();
+    }
+  }
+
+  /* ═══════════════════════════════════
+     BURST  — energy explosion on activation
+  ═══════════════════════════════════ */
+  class Burst {
+    constructor(x,y,colorType){
+      this.x=x; this.y=y;
+      this.life=1.0;
+      this.decay=0.04+Math.random()*0.03;
+      this.colorType=colorType;
+      this.rings=[
+        {r:0,maxR:12+Math.random()*10, spd:0.9},
+        {r:0,maxR:22+Math.random()*14, spd:0.6},
+        {r:0,maxR:36+Math.random()*16, spd:0.4},
+      ];
+      this.particles=[];
+      const nP=6+Math.floor(Math.random()*6);
+      for(let i=0;i<nP;i++){
+        const a=Math.random()*Math.PI*2;
+        const spd=0.6+Math.random()*1.2;
+        this.particles.push({x:0,y:0,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:1});
+      }
+    }
+    update(){
+      this.life-=this.decay;
+      this.rings.forEach(r=>{ r.r=Math.min(r.maxR, r.r+r.spd); });
+      this.particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vx*=0.93; p.vy*=0.93; p.life-=0.06; });
+    }
+    draw(){
+      if(this.life<=0) return;
+      const p=palette();
+      const col=this.colorType===0?p.burst:this.colorType===1?p.sig2:p.sig3;
+      /* rings */
+      this.rings.forEach(ring=>{
+        const a=Math.max(0,(this.life*(1-ring.r/ring.maxR))*0.55);
+        if(a<0.01) return;
+        ctx.beginPath(); ctx.arc(this.x,this.y,ring.r,0,Math.PI*2);
+        ctx.strokeStyle=rgb(col,a); ctx.lineWidth=1.5; ctx.stroke();
+      });
+      /* particles */
+      this.particles.forEach(part=>{
+        if(part.life<=0) return;
+        const a=part.life*this.life*0.9;
+        ctx.beginPath(); ctx.arc(this.x+part.x,this.y+part.y,1.4,0,Math.PI*2);
+        ctx.fillStyle=rgb(col,a); ctx.fill();
+      });
+    }
+  }
+
+  /* ═══════════════════════════════════
+     BUILD GRAPH
+  ═══════════════════════════════════ */
+  function buildGraph(){
+    resize();
+    nodes=[];
+    const area=W*H;
+    /* hub nodes (tier 0) — large, fewer */
+    const nHub=Math.max(4, Math.floor(area/140000));
+    /* mid nodes (tier 1) */
+    const nMid=Math.max(10, Math.floor(area/38000));
+    /* leaf nodes (tier 2) */
+    const nLeaf=Math.max(16, Math.floor(area/18000));
+
+    for(let i=0;i<nHub;i++){
+      nodes.push(new Node(80+Math.random()*(W-160), 80+Math.random()*(H-160), 0));
+    }
+    for(let i=0;i<nMid;i++){
+      nodes.push(new Node(40+Math.random()*(W-80), 40+Math.random()*(H-80), 1));
+    }
+    for(let i=0;i<nLeaf;i++){
+      nodes.push(new Node(20+Math.random()*(W-40), 20+Math.random()*(H-40), 2));
+    }
+    rebuildEdges();
+  }
+
+  let edgeObjs=[];
+  function rebuildEdges(){
+    edgeObjs=[];
+    edges=[];
+    const maxDist=isLight()?175:190;
+    for(let i=0;i<nodes.length;i++){
+      for(let j=i+1;j<nodes.length;j++){
+        const d=Math.hypot(nodes[i].x-nodes[j].x, nodes[i].y-nodes[j].y);
+        if(d<maxDist){
+          const e=new Edge(nodes[i],nodes[j],d);
+          edgeObjs.push(e);
+          edges.push([i,j,d,maxDist,e]);
+        }
+      }
+    }
+  }
+
+  /* ═══════════════════════════════════
+     SIGNAL SPAWNING
+  ═══════════════════════════════════ */
+  let nextPulse=0, nextCluster=0;
+
+  function spawnSignal(cascade=false){
+    if(!edges.length) return;
+    /* prefer hub→mid connections */
+    let attempts=0, chosen=null;
+    while(attempts++<8){
+      const e=edges[Math.floor(Math.random()*edges.length)];
+      const a=nodes[e[0]], b=nodes[e[1]];
+      if(cascade || a.tier<=1 || b.tier<=1 || Math.random()>0.5){
+        chosen=e; break;
+      }
+    }
+    if(!chosen) chosen=edges[Math.floor(Math.random()*edges.length)];
+    const flip=Math.random()>0.5;
+    const from=nodes[flip?chosen[0]:chosen[1]];
+    const to  =nodes[flip?chosen[1]:chosen[0]];
+    signals.push(new Signal(from, to, chosen[4], cascade));
+  }
+
+  function clusterFire(){
+    /* pick a hub node and fire 3-6 signals outward */
+    const hubs=nodes.filter(n=>n.tier===0);
+    if(!hubs.length) return;
+    const hub=hubs[Math.floor(Math.random()*hubs.length)];
+    hub.activate();
+    bursts.push(new Burst(hub.x,hub.y,hub.colorVariant));
+    /* find edges connected to hub */
+    const hubIdx=nodes.indexOf(hub);
+    const connected=edges.filter(e=>e[0]===hubIdx||e[1]===hubIdx);
+    const num=Math.min(connected.length, 3+Math.floor(Math.random()*4));
+    const shuffled=connected.sort(()=>Math.random()-.5).slice(0,num);
+    shuffled.forEach((e,i)=>{
+      setTimeout(()=>{
+        const from=hub;
+        const to  =nodes[e[0]===hubIdx?e[1]:e[0]];
+        signals.push(new Signal(from,to,e[4],true));
+      }, i*80+Math.random()*60);
+    });
+  }
+
+  /* ═══════════════════════════════════
+     MAIN LOOP
+  ═══════════════════════════════════ */
+  function loop(now){
+    ctx.clearRect(0,0,W,H);
+    const maxDist=isLight()?175:190;
+
+    /* ── rebuild edges every 3s ── */
+    if(now-lastRebuild>3000){
+      rebuildEdges();
+      lastRebuild=now;
+    }
+
+    /* ── update nodes ── */
+    nodes.forEach(n=>n.update());
+
+    /* ── draw edges ── */
+    edgeObjs.forEach(e=>e.draw(maxDist));
+
+    /* ── draw nodes ── */
+    nodes.forEach(n=>n.draw());
+
+    /* ── spawn single signals ── */
+    if(now>nextPulse && edges.length>0){
+      const count=1+Math.floor(Math.random()*2);
+      for(let i=0;i<count;i++) spawnSignal();
+      nextPulse=now+80+Math.random()*140;
+    }
+
+    /* ── cluster firing every 3-6s ── */
+    if(now>nextCluster){
+      clusterFire();
+      nextCluster=now+3000+Math.random()*3000;
+    }
+
+    /* ── update & draw signals ── */
+    signals=signals.filter(s=>!s.done);
+    signals.forEach(s=>{ s.update(); s.draw(); });
+    /* on signal completion → burst */
+    signals.forEach(s=>{
+      if(s.done && Math.random()>0.55){
+        bursts.push(new Burst(s.to.x,s.to.y,s.colorType));
+      }
+    });
+
+    /* ── update & draw bursts ── */
+    bursts=bursts.filter(b=>b.life>0);
+    bursts.forEach(b=>{ b.update(); b.draw(); });
+
+    animFrame=requestAnimationFrame(loop);
+  }
+
+  /* ── init ── */
+  buildGraph();
+  if(!rafRunning){ rafRunning=true; requestAnimationFrame(loop); }
+
+  /* ── resize handler ── */
+  let resizeTimer;
+  window.addEventListener('resize',()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(()=>{ buildGraph(); },200);
+  });
+
+  /* ── mouse parallax ── */
+  hero.addEventListener('mousemove',e=>{
+    const r=hero.getBoundingClientRect();
+    mouse.x=e.clientX-r.left;
+    mouse.y=e.clientY-r.top;
+  });
+  hero.addEventListener('mouseleave',()=>{ mouse.x=-9999; mouse.y=-9999; });
+
+  /* ── click burst ── */
+  hero.addEventListener('click',e=>{
+    const r=hero.getBoundingClientRect();
+    const cx=e.clientX-r.left, cy=e.clientY-r.top;
+    bursts.push(new Burst(cx,cy,Math.floor(Math.random()*3)));
+    /* trigger nearest node */
+    let best=null,bestD=Infinity;
+    nodes.forEach(n=>{ const d=Math.hypot(n.x-cx,n.y-cy); if(d<bestD){bestD=d;best=n;} });
+    if(best && bestD<120) best.activate();
+  });
+
+  /* ── theme toggle ── */
+  const themeBtn=document.getElementById('theme-toggle');
+  if(themeBtn) themeBtn.addEventListener('click',()=>setTimeout(buildGraph,120));
+
+})();
+</script>
+{% endblock %}

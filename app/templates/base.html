@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Grivora AI{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    /* ── User avatar dropdown ── */
+    .user-menu { position:relative; display:inline-flex; align-items:center; }
+    .user-avatar {
+      width:34px; height:34px; border-radius:50%;
+      background:linear-gradient(135deg,#1d4ed8,#7c3aed);
+      display:flex; align-items:center; justify-content:center;
+      font-size:13px; font-weight:700; color:#fff;
+      cursor:pointer; border:2px solid transparent;
+      transition:all 0.22s; user-select:none;
+    }
+    .user-avatar:hover { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
+    .user-dropdown {
+      display:none; position:absolute; top:calc(100% + 10px); right:0;
+      background:var(--surface); border:1.5px solid var(--border2);
+      border-radius:14px; padding:8px; min-width:200px;
+      box-shadow:var(--shadow-lg); z-index:300;
+      animation:fadeUp 0.2s ease both;
+    }
+    .user-menu:hover .user-dropdown,
+    .user-menu:focus-within .user-dropdown { display:block; }
+    .user-dropdown-header {
+      padding:10px 14px 8px;
+      border-bottom:1px solid var(--border);
+      margin-bottom:6px;
+    }
+    .user-dropdown-name  { font-weight:700; font-size:14px; color:var(--text); }
+    .user-dropdown-email { font-size:12px; color:var(--text3); margin-top:2px; }
+    .dropdown-item {
+      display:flex; align-items:center; gap:9px;
+      padding:8px 14px; border-radius:9px; font-size:13px;
+      font-weight:500; color:var(--text2); text-decoration:none;
+      transition:all 0.18s; cursor:pointer; background:transparent;
+      border:none; font-family:inherit; width:100%; text-align:left;
+    }
+    .dropdown-item:hover { background:var(--surface2); color:var(--text); }
+    .dropdown-item.danger:hover { background:rgba(220,38,38,0.07); color:#dc2626; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<nav id="main-nav">
+  <a href="/" class="nav-logo">
+    <!-- Grivora AI Robot Logo -->
+    <svg
+      id="robot-svg"
+      width="65px"
+      height="65px"
+      viewBox="60 -20 900 1000"
+      xmlns="http://www.w3.org/2000/svg"
+      style="flex-shrink:0; border-radius:50%; overflow:hidden; display:block;"
+    >
+      <!-- Original Uploaded Image -->
+      <image
+        id="original-robot-image"
+        href="https://firebasestorage.googleapis.com/v0/b/banani-prod.appspot.com/o/reference-images%2F59284dcb-156d-4ed6-ba00-6c7c41cee938?alt=media&token=ba99b15c-9042-49d3-be59-b90190e925a7"
+        x="0"
+        y="0"
+        width="1024"
+        height="1024"
+      ></image>
+
+      <!-- Left Eyelid Overlay Animation -->
+      <g transform="rotate(10 400 400)">
+        <rect x="310" y="280" width="180" height="0" fill="#000000">
+          <animate
+            attributeName="height"
+            values="0; 220; 0; 0"
+            keyTimes="0; 0.03; 0.06; 1"
+            dur="4s"
+            repeatCount="indefinite"
+          ></animate>
+        </rect>
+      </g>
+
+      <!-- Right Eyelid Overlay Animation -->
+      <g transform="rotate(10 600 440)">
+        <rect x="510" y="320" width="180" height="0" fill="#000000">
+          <animate
+            attributeName="height"
+            values="0; 220; 0; 0"
+            keyTimes="0; 0.03; 0.06; 1"
+            dur="4s"
+            repeatCount="indefinite"
+          ></animate>
+        </rect>
+      </g>
+    </svg>
+    
+    <span style="font-size:33px;">Grivora <span style="font-weight:330;opacity:0.65;">AI</span></span>
+  </a>
+
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/analysis">Data Analysis</a>
+    <a href="/predict">Predictive ML</a>
+    <a href="/bi">Business Intel</a>
+
+    {% if session.get('user_id') %}
+      <!-- Logged-in: Upload + Dashboard + Avatar dropdown -->
+      <a href="/upload" class="nav-cta">Upload Data →</a>
+      <a href="/dashboard" class="nav-cta" style="background:var(--accent3) !important;box-shadow:0 4px 16px rgba(8,145,178,0.3) !important;margin-left:4px;">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="display:inline;vertical-align:middle;margin-right:3px;"><rect x="1" y="1" width="4.5" height="4.5" rx="1.2" stroke="currentColor" stroke-width="1.3"/><rect x="7.5" y="1" width="4.5" height="4.5" rx="1.2" stroke="currentColor" stroke-width="1.3"/><rect x="1" y="7.5" width="4.5" height="4.5" rx="1.2" stroke="currentColor" stroke-width="1.3"/><rect x="7.5" y="7.5" width="4.5" height="4.5" rx="1.2" stroke="currentColor" stroke-width="1.3"/></svg>
+        Dashboard
+      </a>
+      <div class="user-menu" tabindex="0" style="margin-left:8px;">
+        <div class="user-avatar" title="{{ session.get('user_name','') }}">
+          {{ session.get('user_name','U')[0].upper() }}
+        </div>
+        <div class="user-dropdown">
+          <div class="user-dropdown-header">
+            <div class="user-dropdown-name">{{ session.get('user_name','') }}</div>
+            <div class="user-dropdown-email">{{ session.get('user_email','') }}</div>
+          </div>
+          <a href="/analysis" class="dropdown-item">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="2" width="13" height="11" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M1 5.5h13M5 5.5v7" stroke="currentColor" stroke-width="1.1"/></svg>
+            Data Analysis
+          </a>
+          <a href="/upload" class="dropdown-item">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 1v9M4 5l3.5-4L11 5M2 12h11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Upload Dataset
+          </a>
+          <a href="/chat" class="dropdown-item">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 3h11v8H8l-3 3V11H2V3z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+            AI Chat
+          </a>
+          <a href="/auth/logout" class="dropdown-item danger">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M10 5l3 3-3 3M13 8H6M6 2H3a1 1 0 00-1 1v9a1 1 0 001 1h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Sign Out
+          </a>
+        </div>
+      </div>
+
+    {% else %}
+      <!-- Logged-out: Login + Register -->
+      <a href="/auth/login" style="font-size:13.5px;font-weight:600;color:var(--text2);padding:8px 16px;border-radius:9px;border:1.5px solid var(--border2);transition:all 0.22s;text-decoration:none;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">Sign In</a>
+      <a href="/auth/register" class="nav-cta" style="margin-left:6px;">Get Started →</a>
+    {% endif %}
+  </div>
+</nav>
+
+<main>{% block content %}{% endblock %}</main>
+
+<!-- Theme Toggle -->
+<button id="theme-toggle" aria-label="Toggle theme">
+  <span id="theme-icon">🌙</span>
+  <span id="theme-label">Dark</span>
+</button>
+
+<canvas id="ripple-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:9998;"></canvas>
+
+<script src="{{ url_for('static', filename='charts.js') }}"></script>
+<script>
+const btn=document.getElementById('theme-toggle'),icon=document.getElementById('theme-icon'),label=document.getElementById('theme-label'),body=document.body,canvas=document.getElementById('ripple-canvas'),ctx=canvas.getContext('2d');
+const saved=localStorage.getItem('grivora-theme')||'light';
+if(saved==='dark') setDark(); else setLight();
+btn.addEventListener('click',()=>{
+  const isLight=body.classList.contains('light-mode');
+  triggerRipple(!isLight);
+  btn.classList.add('spinning');
+  btn.addEventListener('animationend',()=>btn.classList.remove('spinning'),{once:true});
+  setTimeout(()=>{isLight?setDark():setLight();},100);
+});
+function setDark(){body.classList.remove('light-mode');icon.textContent='🌙';label.textContent='Dark';localStorage.setItem('grivora-theme','dark');}
+function setLight(){body.classList.add('light-mode');icon.textContent='☀️';label.textContent='Light';localStorage.setItem('grivora-theme','light');}
+function triggerRipple(goingLight){
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  const x=window.innerWidth-90,y=window.innerHeight-40,maxR=Math.hypot(x,y)+120;
+  const color=goingLight?'245,248,255':'6,8,18';
+  let r=0,raf;
+  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=`rgba(${color},${1-r/maxR})`;ctx.fill();r+=maxR/16;if(r<maxR)raf=requestAnimationFrame(draw);else ctx.clearRect(0,0,canvas.width,canvas.height);}
+  cancelAnimationFrame(raf);draw();
+}
+window.addEventListener('scroll',()=>document.getElementById('main-nav').classList.toggle('scrolled',window.scrollY>20));
+const observer=new IntersectionObserver(e=>e.forEach(en=>{if(en.isIntersecting)en.target.classList.add('visible');}),{threshold:0.08});
+document.addEventListener('DOMContentLoaded',()=>document.querySelectorAll('.reveal').forEach(el=>observer.observe(el)));
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

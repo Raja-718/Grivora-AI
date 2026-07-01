@@ -1,0 +1,966 @@
+{% extends "base.html" %}
+{% block title %}Data Preview — DataPulse AI{% endblock %}
+{% block head %}
+<style>
+/* ── Ribbon ── */
+.ribbon {
+  display:flex; align-items:center; gap:6px;
+  padding:10px 24px; background:var(--surface);
+  border-bottom:2px solid var(--border);
+  overflow-x:auto; flex-wrap:nowrap; position:sticky;
+  top:130px; z-index:40;
+}
+.ribbon-tab {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:9px 20px; border-radius:10px; font-size:13px;
+  font-weight:700; cursor:pointer; border:2px solid transparent;
+  white-space:nowrap; font-family:'Instrument Sans',sans-serif;
+  transition:all 0.22s var(--ease); color:var(--text2);
+  background:var(--surface2); letter-spacing:0.01em;
+  position:relative; overflow:hidden;
+}
+.ribbon-tab::after {
+  content:''; position:absolute; inset:0;
+  background:currentColor; opacity:0;
+  transition:opacity 0.2s;
+}
+.ribbon-tab:hover { transform:translateY(-2px); box-shadow:0 4px 16px rgba(0,0,0,0.1); color:var(--text); }
+.ribbon-tab:hover::after { opacity:0.04; }
+
+/* Active states per tab */
+.ribbon-tab.active.tab-table   { color:#fff; background:var(--accent);  border-color:var(--accent);  box-shadow:0 4px 16px rgba(37,99,235,0.35); }
+.ribbon-tab.active.tab-profile { color:#fff; background:#7c3aed; border-color:#7c3aed; box-shadow:0 4px 16px rgba(124,58,237,0.35); }
+.ribbon-tab.active.tab-clean   { color:#fff; background:#059669; border-color:#059669; box-shadow:0 4px 16px rgba(5,150,105,0.35); }
+.ribbon-tab.active.tab-chart   { color:#fff; background:#ea580c; border-color:#ea580c; box-shadow:0 4px 16px rgba(234,88,12,0.35); }
+.ribbon-tab.active.tab-suggest { color:#fff; background:#0891b2; border-color:#0891b2; box-shadow:0 4px 16px rgba(8,145,178,0.35); }
+.ribbon-tab.active.tab-edit    { color:#fff; background:#d97706; border-color:#d97706; box-shadow:0 4px 16px rgba(217,119,6,0.35); }
+
+.ribbon-tab svg { flex-shrink:0; }
+
+/* ── Panels ── */
+.panel { display:none; padding:24px 28px; animation:fadeUp 0.3s ease both; }
+.panel.active { display:block; }
+
+/* ── Excel Table ── */
+#table-wrap {
+  overflow:auto; max-height:calc(100vh - 300px);
+  border-radius:12px; border:1px solid var(--border);
+  background:var(--surface);
+}
+#data-table { border-collapse:collapse; width:max-content; min-width:100%; font-size:13px; font-family:'Instrument Sans',sans-serif; }
+#data-table thead th {
+  position:sticky; top:0; background:var(--accent); color:#fff;
+  padding:10px 18px; text-align:left; font-weight:700;
+  white-space:nowrap; font-size:12px; letter-spacing:0.04em;
+  border-right:1px solid rgba(255,255,255,0.15); z-index:10;
+}
+#data-table thead th:first-child { position:sticky; top:0; left:0; z-index:20; background:var(--accent); }
+#data-table tbody tr:nth-child(even) { background:var(--surface2); }
+#data-table tbody tr:hover { background:rgba(37,99,235,0.04); }
+#data-table tbody td { padding:9px 18px; white-space:nowrap; border-right:1px solid var(--border); color:var(--text2); font-size:13px; }
+#data-table tbody td:first-child { position:sticky; left:0; background:inherit; font-weight:700; color:var(--text3); font-size:11px; border-right:2px solid var(--border2); z-index:5; }
+
+/* ── Profile ── */
+.profile-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:16px; }
+.profile-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px; transition:all 0.22s; }
+.profile-card:hover { border-color:var(--border2); box-shadow:var(--shadow-sm); transform:translateY(-2px); }
+.profile-bar-bg { height:5px; background:var(--bg2); border-radius:3px; margin-top:8px; overflow:hidden; }
+.profile-bar-fill { height:100%; border-radius:3px; transition:width 1s ease; }
+
+/* ── Issue cards ── */
+.issue-card { display:flex; align-items:flex-start; gap:14px; padding:16px 18px; background:var(--surface); border:1px solid var(--border); border-radius:12px; margin-bottom:10px; transition:all 0.22s; }
+.issue-card:hover { border-color:var(--border2); transform:translateX(3px); }
+
+/* ══════════════════════════════════════════
+   CHART TYPE CARDS — Excel-style professional
+   ══════════════════════════════════════════ */
+.chart-type-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));
+  gap:14px;
+}
+.chart-type-card {
+  padding:20px 10px 16px;
+  background:var(--surface);
+  border:2px solid var(--border);
+  border-radius:16px;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.25s var(--ease);
+  position:relative;
+  overflow:hidden;
+  user-select:none;
+}
+.chart-type-card::before {
+  content:'';
+  position:absolute; inset:0;
+  background:linear-gradient(135deg, currentColor, transparent);
+  opacity:0; transition:opacity 0.3s;
+  border-radius:14px;
+}
+.chart-type-card:hover {
+  transform:translateY(-4px);
+  box-shadow:0 8px 28px rgba(0,0,0,0.12);
+  border-color:var(--accent);
+}
+.chart-type-card:hover::before { opacity:0.04; }
+.chart-type-card.selected {
+  border-color:var(--accent);
+  background:rgba(37,99,235,0.06);
+  box-shadow:0 6px 24px rgba(37,99,235,0.18);
+  transform:translateY(-3px);
+}
+.ct-icon-wrap {
+  width:56px; height:56px;
+  border-radius:14px;
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto 12px;
+  font-size:28px;
+  transition:transform 0.25s var(--ease);
+}
+.chart-type-card:hover .ct-icon-wrap { transform:scale(1.12) rotate(-3deg); }
+.chart-type-card.selected .ct-icon-wrap { transform:scale(1.1); }
+.ct-name { font-size:12px; font-weight:700; color:var(--text); margin-bottom:3px; font-family:'Cabinet Grotesk',sans-serif; }
+.ct-desc { font-size:10px; color:var(--text3); line-height:1.4; }
+
+/* Category section label */
+.chart-section-label {
+  font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:0.1em; color:var(--text3);
+  margin:24px 0 12px; padding-left:4px;
+  border-left:3px solid var(--accent);
+  padding-left:10px;
+}
+
+/* Chart preview area */
+#chart-preview-area {
+  margin-top:28px;
+  background:var(--surface);
+  border:1.5px solid var(--border2);
+  border-radius:18px;
+  overflow:hidden;
+}
+.preview-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 20px; border-bottom:1px solid var(--border);
+  background:var(--surface2);
+}
+.preview-controls {
+  display:flex; gap:12px; align-items:center; padding:16px 20px 0;
+  flex-wrap:wrap;
+}
+.axis-select {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 14px; background:var(--surface);
+  border:1.5px solid var(--border2); border-radius:10px;
+  font-size:13px; color:var(--text2);
+}
+.axis-select select {
+  background:transparent; border:none; outline:none;
+  color:var(--text); font-family:'Instrument Sans',sans-serif;
+  font-size:13px; font-weight:600; cursor:pointer;
+  padding:0 4px; min-width:100px;
+}
+#chart-preview-plot { height:360px; padding:10px 16px 16px; }
+
+/* ── Edit tools ── */
+.edit-tool {
+  display:flex; align-items:center; gap:14px;
+  padding:14px 18px; background:var(--surface);
+  border:1.5px solid var(--border); border-radius:12px;
+  margin-bottom:10px; transition:all 0.22s; cursor:pointer;
+}
+.edit-tool:hover { border-color:var(--border2); background:var(--surface2); transform:translateX(4px); box-shadow:var(--shadow-sm); }
+
+/* ── Build dashboard CTA ── */
+.build-dashboard-btn {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:11px 26px;
+  background:linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+  color:#fff; font-weight:700; font-size:14px; border-radius:12px;
+  text-decoration:none; font-family:'Instrument Sans',sans-serif;
+  box-shadow:0 6px 20px rgba(37,99,235,0.30);
+  transition:all 0.28s var(--ease); white-space:nowrap;
+}
+.build-dashboard-btn:hover { transform:translateY(-2px); box-shadow:0 10px 32px rgba(37,99,235,0.42); color:#fff; }
+
+/* Edit modal */
+#edit-modal { display:none; margin-top:24px; max-width:500px; padding:24px; background:var(--surface); border:1.5px solid var(--border2); border-radius:16px; }
+</style>
+{% endblock %}
+{% block content %}
+
+<!-- ── Top bar ── -->
+<div style="display:flex;align-items:center;gap:14px;padding:14px 28px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:66px;z-index:50;">
+  <a href="/chat" class="back-btn" style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;background:var(--surface2);border:1.5px solid var(--border2);border-radius:9px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;transition:all 0.22s;font-family:'Instrument Sans',sans-serif;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Back
+  </a>
+  <div>
+    <div style="font-family:'Cabinet Grotesk',sans-serif;font-size:17px;font-weight:800;color:var(--text);">Data Preview</div>
+    <div id="preview-filename" style="font-size:12px;color:var(--text3);"></div>
+  </div>
+  <div id="data-stats" style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center;"></div>
+  <a href="/auto-dashboard" class="build-dashboard-btn">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="5.5" height="5.5" rx="1.5" stroke="currentColor" stroke-width="1.4"/><rect x="8.5" y="1" width="5.5" height="5.5" rx="1.5" stroke="currentColor" stroke-width="1.4"/><rect x="1" y="8.5" width="5.5" height="5.5" rx="1.5" stroke="currentColor" stroke-width="1.4"/><rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1.5" stroke="currentColor" stroke-width="1.4"/></svg>
+    Build Dashboard
+  </a>
+</div>
+
+<!-- ── Ribbon ── -->
+<div class="ribbon">
+  <button class="ribbon-tab tab-table active" onclick="switchTab('preview',this)">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="2" width="13" height="11" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M1 6h13M5 6v7" stroke="currentColor" stroke-width="1.2"/></svg>
+    Data Table
+  </button>
+  <button class="ribbon-tab tab-profile" onclick="switchTab('profile',this)">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 4.5v3.5l2 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    Data Profiling
+  </button>
+  <button class="ribbon-tab tab-clean" onclick="switchTab('clean',this)">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2.5 12.5l3-3 5.5-5.5-1.5-1.5-5.5 5.5-1.5 4.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M10 2l3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+    Data Cleaning
+  </button>
+  <button class="ribbon-tab tab-chart" onclick="switchTab('charts',this)">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="8" width="3" height="6" rx="1" fill="currentColor" opacity="0.9"/><rect x="6" y="5" width="3" height="9" rx="1" fill="currentColor" opacity="0.7"/><rect x="11" y="1" width="3" height="13" rx="1" fill="currentColor" opacity="0.5"/></svg>
+    Chart Types
+  </button>
+  <button class="ribbon-tab tab-suggest" onclick="switchTab('suggest',this)">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 1l1.8 4L14 5.8l-3.25 3 .8 4.5L7.5 11 3.45 13.3l.8-4.5L1 5.8 6.2 5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+    AI Suggestions
+  </button>
+  <button class="ribbon-tab tab-edit" onclick="switchTab('edit',this)">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M10.5 2.5l2 2L5 12H3v-2l7.5-7.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+    Manual Edit
+  </button>
+</div>
+
+<!-- ══════════ TAB: Data Table ══════════ -->
+<div id="panel-preview" class="panel active">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+    <div style="font-size:13px;color:var(--text2);">
+      <span id="row-count" style="font-weight:700;color:var(--text);"></span> rows &nbsp;·&nbsp;
+      <span id="col-count" style="font-weight:700;color:var(--text);"></span> columns
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="text" id="table-search" placeholder="🔍 Search rows..." onkeyup="filterTable()" style="width:200px;padding:8px 14px;font-size:13px;border-radius:9px;">
+      <select id="rows-per-page" onchange="renderTable()" style="padding:8px 12px;font-size:13px;border-radius:9px;width:auto;background:var(--surface);border:1.5px solid var(--border);color:var(--text);font-family:'Instrument Sans',sans-serif;">
+        <option value="50">50 rows</option><option value="100">100 rows</option>
+        <option value="200">200 rows</option><option value="all">All rows</option>
+      </select>
+    </div>
+  </div>
+  <div id="loading-table" style="text-align:center;padding:60px;color:var(--text2);">
+    <div style="font-size:32px;margin-bottom:12px;animation:float 2s ease-in-out infinite;">⏳</div>
+    Loading data...
+  </div>
+  <div id="table-wrap" style="display:none;">
+    <table id="data-table"><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+  </div>
+  <div id="pagination" style="margin-top:12px;text-align:center;font-size:13px;color:var(--text3);"></div>
+</div>
+
+<!-- ══════════ TAB: Data Profiling ══════════ -->
+<div id="panel-profile" class="panel">
+  <div id="profile-loading" style="text-align:center;padding:40px;color:var(--text2);">
+    <div style="font-size:32px;margin-bottom:12px;animation:float 2s ease-in-out infinite;">🔍</div>
+    Generating data profile...
+  </div>
+  <div id="profile-content" style="display:none;">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;" id="overview-stats"></div>
+    <h3 style="margin-bottom:16px;font-size:15px;font-family:'Cabinet Grotesk',sans-serif;">Column Profiles</h3>
+    <div class="profile-grid" id="col-profiles"></div>
+  </div>
+</div>
+
+<!-- ══════════ TAB: Data Cleaning ══════════ -->
+<div id="panel-clean" class="panel">
+  <div id="clean-loading" style="text-align:center;padding:40px;color:var(--text2);">
+    <div style="font-size:32px;margin-bottom:12px;animation:float 2s ease-in-out infinite;">🤖</div>
+    Scanning for data quality issues...
+  </div>
+  <div id="clean-content" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h3 style="font-size:16px;margin-bottom:4px;font-family:'Cabinet Grotesk',sans-serif;">Data Quality Report</h3>
+        <p style="font-size:13px;color:var(--text2);">Issues detected in your dataset</p>
+      </div>
+      <button onclick="runAICleaning()" style="padding:10px 20px;font-size:13px;font-family:'Instrument Sans',sans-serif;font-weight:600;">🤖 Ask AI to Fix All</button>
+    </div>
+    <div id="issues-list"></div>
+    <div id="ai-clean-response" style="display:none;margin-top:20px;padding:20px;background:var(--surface2);border:1px solid var(--border2);border-radius:14px;font-size:14px;line-height:1.75;"></div>
+  </div>
+</div>
+
+<!-- ══════════ TAB: Chart Types ══════════ -->
+<div id="panel-charts" class="panel">
+
+  <!-- COMPARISON CHARTS -->
+  <div class="chart-section-label" style="color:var(--accent);border-color:var(--accent);">📊 Comparison Charts</div>
+  <div class="chart-type-grid" style="margin-bottom:8px;">
+    <div class="chart-type-card" onclick="selectChart('bar',this)">
+      <div class="ct-icon-wrap" style="background:rgba(37,99,235,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><rect x="2" y="14" width="7" height="12" rx="1.5" fill="#2563eb" opacity="0.9"/><rect x="14" y="8" width="7" height="18" rx="1.5" fill="#2563eb"/><rect x="26" y="4" width="7" height="22" rx="1.5" fill="#2563eb" opacity="0.7"/></svg>
+      </div>
+      <div class="ct-name">Column / Bar</div>
+      <div class="ct-desc">Compare categories</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('hbar',this)">
+      <div class="ct-icon-wrap" style="background:rgba(124,58,237,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><rect x="2" y="3" width="20" height="6" rx="1.5" fill="#7c3aed" opacity="0.9"/><rect x="2" y="11" width="28" height="6" rx="1.5" fill="#7c3aed"/><rect x="2" y="19" width="14" height="6" rx="1.5" fill="#7c3aed" opacity="0.7"/></svg>
+      </div>
+      <div class="ct-name">Horizontal Bar</div>
+      <div class="ct-desc">Rank comparison</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('grouped_bar',this)">
+      <div class="ct-icon-wrap" style="background:rgba(8,145,178,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><rect x="2" y="12" width="5" height="14" rx="1" fill="#0891b2"/><rect x="8" y="8" width="5" height="18" rx="1" fill="#0891b2" opacity="0.6"/><rect x="16" y="6" width="5" height="20" rx="1" fill="#0891b2"/><rect x="22" y="10" width="5" height="16" rx="1" fill="#0891b2" opacity="0.6"/></svg>
+      </div>
+      <div class="ct-name">Grouped Bar</div>
+      <div class="ct-desc">Multi-group compare</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('stacked_bar',this)">
+      <div class="ct-icon-wrap" style="background:rgba(217,119,6,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><rect x="4" y="16" width="8" height="10" rx="1.5" fill="#d97706"/><rect x="4" y="10" width="8" height="6" rx="0" fill="#fbbf24"/><rect x="4" y="6" width="8" height="4" rx="0" fill="#fde68a"/><rect x="16" y="12" width="8" height="14" rx="1.5" fill="#d97706"/><rect x="16" y="7" width="8" height="5" rx="0" fill="#fbbf24"/><rect x="28" y="14" width="8" height="12" rx="1.5" fill="#d97706"/><rect x="28" y="10" width="8" height="4" rx="0" fill="#fbbf24"/></svg>
+      </div>
+      <div class="ct-name">Stacked Bar</div>
+      <div class="ct-desc">Part-to-whole by group</div>
+    </div>
+  </div>
+
+  <!-- TREND CHARTS -->
+  <div class="chart-section-label" style="color:#059669;border-color:#059669;">📈 Trend & Time Series</div>
+  <div class="chart-type-grid" style="margin-bottom:8px;">
+    <div class="chart-type-card" onclick="selectChart('line',this)">
+      <div class="ct-icon-wrap" style="background:rgba(5,150,105,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><polyline points="2,22 8,16 14,18 20,10 26,12 34,4" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="2" cy="22" r="2" fill="#059669"/><circle cx="14" cy="18" r="2" fill="#059669"/><circle cx="26" cy="12" r="2" fill="#059669"/></svg>
+      </div>
+      <div class="ct-name">Line Chart</div>
+      <div class="ct-desc">Trends over time</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('area',this)">
+      <div class="ct-icon-wrap" style="background:rgba(5,150,105,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><path d="M2 22 L8 16 L14 18 L20 10 L26 12 L34 4 L34 26 L2 26 Z" fill="#059669" opacity="0.25"/><polyline points="2,22 8,16 14,18 20,10 26,12 34,4" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+      <div class="ct-name">Area Chart</div>
+      <div class="ct-desc">Cumulative trends</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('stacked_area',this)">
+      <div class="ct-icon-wrap" style="background:rgba(16,185,129,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><path d="M2 26 L10 20 L18 22 L26 18 L34 16 L34 26 Z" fill="#059669" opacity="0.5"/><path d="M2 20 L10 14 L18 16 L26 12 L34 10 L34 16 L26 18 L18 22 L10 20 Z" fill="#34d399" opacity="0.5"/><path d="M2 14 L10 8 L18 10 L26 6 L34 4 L34 10 L26 12 L18 16 L10 14 Z" fill="#6ee7b7" opacity="0.5"/></svg>
+      </div>
+      <div class="ct-name">Stacked Area</div>
+      <div class="ct-desc">Cumulative breakdown</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('step_line',this)">
+      <div class="ct-icon-wrap" style="background:rgba(14,165,233,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><polyline points="2,24 2,18 10,18 10,12 18,12 18,8 26,8 26,4 34,4" fill="none" stroke="#0ea5e9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="ct-name">Step Line</div>
+      <div class="ct-desc">Discrete changes</div>
+    </div>
+  </div>
+
+  <!-- DISTRIBUTION CHARTS -->
+  <div class="chart-section-label" style="color:#7c3aed;border-color:#7c3aed;">📉 Distribution & Statistical</div>
+  <div class="chart-type-grid" style="margin-bottom:8px;">
+    <div class="chart-type-card" onclick="selectChart('histogram',this)">
+      <div class="ct-icon-wrap" style="background:rgba(124,58,237,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><rect x="2" y="18" width="5" height="8" rx="1" fill="#7c3aed" opacity="0.5"/><rect x="8" y="10" width="5" height="16" rx="1" fill="#7c3aed" opacity="0.7"/><rect x="14" y="4" width="5" height="22" rx="1" fill="#7c3aed"/><rect x="20" y="8" width="5" height="18" rx="1" fill="#7c3aed" opacity="0.7"/><rect x="26" y="16" width="5" height="10" rx="1" fill="#7c3aed" opacity="0.5"/><rect x="32" y="22" width="3" height="4" rx="1" fill="#7c3aed" opacity="0.3"/></svg>
+      </div>
+      <div class="ct-name">Histogram</div>
+      <div class="ct-desc">Frequency distribution</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('box',this)">
+      <div class="ct-icon-wrap" style="background:rgba(124,58,237,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><line x1="8" y1="4" x2="8" y2="10" stroke="#7c3aed" stroke-width="1.5"/><rect x="4" y="10" width="8" height="10" rx="1.5" stroke="#7c3aed" stroke-width="1.5" fill="rgba(124,58,237,0.15)"/><line x1="4" y1="15" x2="12" y2="15" stroke="#7c3aed" stroke-width="2"/><line x1="8" y1="20" x2="8" y2="26" stroke="#7c3aed" stroke-width="1.5"/><line x1="22" y1="6" x2="22" y2="12" stroke="#7c3aed" stroke-width="1.5"/><rect x="18" y="12" width="8" height="8" rx="1.5" stroke="#7c3aed" stroke-width="1.5" fill="rgba(124,58,237,0.15)"/><line x1="18" y1="16" x2="26" y2="16" stroke="#7c3aed" stroke-width="2"/><line x1="22" y1="20" x2="22" y2="25" stroke="#7c3aed" stroke-width="1.5"/></svg>
+      </div>
+      <div class="ct-name">Box Plot</div>
+      <div class="ct-desc">Outliers & spread</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('violin',this)">
+      <div class="ct-icon-wrap" style="background:rgba(139,92,246,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><path d="M10 2 Q4 8 4 14 Q4 20 10 26 Q12 28 14 26 Q20 20 20 14 Q20 8 14 2 Q12 0 10 2Z" fill="#8b5cf6" opacity="0.3" stroke="#8b5cf6" stroke-width="1.5"/><path d="M22 4 Q17 9 17 14 Q17 19 22 24 Q24 26 26 24 Q31 19 31 14 Q31 9 26 4 Q24 2 22 4Z" fill="#8b5cf6" opacity="0.2" stroke="#8b5cf6" stroke-width="1.5"/></svg>
+      </div>
+      <div class="ct-name">Violin Plot</div>
+      <div class="ct-desc">Distribution shape</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('heatmap',this)">
+      <div class="ct-icon-wrap" style="background:rgba(239,68,68,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><rect x="2" y="2" width="8" height="8" rx="1.5" fill="#ef4444" opacity="0.9"/><rect x="12" y="2" width="8" height="8" rx="1.5" fill="#fca5a5" opacity="0.7"/><rect x="22" y="2" width="8" height="8" rx="1.5" fill="#ef4444" opacity="0.4"/><rect x="2" y="12" width="8" height="8" rx="1.5" fill="#fca5a5" opacity="0.5"/><rect x="12" y="12" width="8" height="8" rx="1.5" fill="#ef4444"/><rect x="22" y="12" width="8" height="8" rx="1.5" fill="#fca5a5" opacity="0.6"/><rect x="2" y="22" width="8" height="5" rx="1.5" fill="#ef4444" opacity="0.3"/><rect x="12" y="22" width="8" height="5" rx="1.5" fill="#ef4444" opacity="0.8"/><rect x="22" y="22" width="8" height="5" rx="1.5" fill="#fca5a5" opacity="0.4"/></svg>
+      </div>
+      <div class="ct-name">Heatmap</div>
+      <div class="ct-desc">Correlation matrix</div>
+    </div>
+  </div>
+
+  <!-- RELATIONSHIP CHARTS -->
+  <div class="chart-section-label" style="color:#0891b2;border-color:#0891b2;">🔵 Relationship & Correlation</div>
+  <div class="chart-type-grid" style="margin-bottom:8px;">
+    <div class="chart-type-card" onclick="selectChart('scatter',this)">
+      <div class="ct-icon-wrap" style="background:rgba(8,145,178,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><circle cx="6" cy="22" r="2.5" fill="#0891b2" opacity="0.7"/><circle cx="12" cy="16" r="2.5" fill="#0891b2"/><circle cx="18" cy="18" r="2.5" fill="#0891b2" opacity="0.8"/><circle cx="24" cy="10" r="2.5" fill="#0891b2"/><circle cx="30" cy="6" r="2.5" fill="#0891b2" opacity="0.9"/><circle cx="8" cy="10" r="2.5" fill="#0891b2" opacity="0.5"/><circle cx="22" cy="20" r="2.5" fill="#0891b2" opacity="0.6"/></svg>
+      </div>
+      <div class="ct-name">Scatter Plot</div>
+      <div class="ct-desc">Correlations</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('bubble',this)">
+      <div class="ct-icon-wrap" style="background:rgba(6,182,212,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><circle cx="10" cy="18" r="6" fill="#06b6d4" opacity="0.5"/><circle cx="24" cy="10" r="9" fill="#06b6d4" opacity="0.35"/><circle cx="30" cy="22" r="4" fill="#06b6d4" opacity="0.6"/></svg>
+      </div>
+      <div class="ct-name">Bubble Chart</div>
+      <div class="ct-desc">3-variable relations</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('scatter_matrix',this)">
+      <div class="ct-icon-wrap" style="background:rgba(14,165,233,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><rect x="2" y="2" width="10" height="10" rx="2" stroke="#0ea5e9" stroke-width="1.2" fill="none"/><circle cx="5" cy="8" r="1.5" fill="#0ea5e9" opacity="0.7"/><circle cx="9" cy="5" r="1.5" fill="#0ea5e9"/><rect x="14" y="2" width="10" height="10" rx="2" stroke="#0ea5e9" stroke-width="1.2" fill="none"/><circle cx="17" cy="9" r="1.5" fill="#0ea5e9" opacity="0.6"/><circle cx="21" cy="6" r="1.5" fill="#0ea5e9"/><rect x="2" y="14" width="10" height="10" rx="2" stroke="#0ea5e9" stroke-width="1.2" fill="none"/><circle cx="6" cy="20" r="1.5" fill="#0ea5e9" opacity="0.8"/><circle cx="10" cy="17" r="1.5" fill="#0ea5e9"/></svg>
+      </div>
+      <div class="ct-name">Scatter Matrix</div>
+      <div class="ct-desc">Multi-var pairs</div>
+    </div>
+  </div>
+
+  <!-- PART-TO-WHOLE -->
+  <div class="chart-section-label" style="color:#d97706;border-color:#d97706;">🥧 Part-to-Whole</div>
+  <div class="chart-type-grid" style="margin-bottom:8px;">
+    <div class="chart-type-card" onclick="selectChart('pie',this)">
+      <div class="ct-icon-wrap" style="background:rgba(217,119,6,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><path d="M18 4 A10 10 0 0 1 28 14 L18 14 Z" fill="#f59e0b"/><path d="M28 14 A10 10 0 0 1 14 23.7 L18 14 Z" fill="#d97706"/><path d="M14 23.7 A10 10 0 0 1 8 14 L18 14 Z" fill="#fbbf24" opacity="0.7"/><path d="M8 14 A10 10 0 0 1 18 4 L18 14 Z" fill="#fde68a"/></svg>
+      </div>
+      <div class="ct-name">Pie Chart</div>
+      <div class="ct-desc">Part-to-whole %</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('donut',this)">
+      <div class="ct-icon-wrap" style="background:rgba(217,119,6,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><path d="M18 4 A10 10 0 0 1 28 14 L23 14 A5 5 0 0 0 18 9 Z" fill="#f59e0b"/><path d="M28 14 A10 10 0 0 1 14 23.7 L16.8 19.3 A5 5 0 0 0 23 14 Z" fill="#d97706"/><path d="M14 23.7 A10 10 0 0 1 8 14 L13 14 A5 5 0 0 0 16.8 19.3 Z" fill="#fbbf24" opacity="0.7"/><path d="M8 14 A10 10 0 0 1 18 4 L18 9 A5 5 0 0 0 13 14 Z" fill="#fde68a"/></svg>
+      </div>
+      <div class="ct-name">Donut Chart</div>
+      <div class="ct-desc">Donut with center</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('treemap',this)">
+      <div class="ct-icon-wrap" style="background:rgba(5,150,105,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><rect x="2" y="2" width="14" height="14" rx="2" fill="#059669" opacity="0.85"/><rect x="18" y="2" width="16" height="8" rx="2" fill="#059669" opacity="0.6"/><rect x="18" y="12" width="16" height="8" rx="2" fill="#059669" opacity="0.4"/><rect x="2" y="18" width="8" height="8" rx="2" fill="#059669" opacity="0.5"/><rect x="12" y="18" width="6" height="8" rx="2" fill="#059669" opacity="0.7"/></svg>
+      </div>
+      <div class="ct-name">Treemap</div>
+      <div class="ct-desc">Hierarchical data</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('sunburst',this)">
+      <div class="ct-icon-wrap" style="background:rgba(234,88,12,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><circle cx="18" cy="14" r="5" fill="#ea580c" opacity="0.9"/><path d="M18 4 A10 10 0 0 1 26.7 9 L22 11 A5 5 0 0 0 18 9 Z" fill="#fb923c" opacity="0.7"/><path d="M26.7 9 A10 10 0 0 1 28 14 L23 14 A5 5 0 0 0 22 11 Z" fill="#fed7aa" opacity="0.7"/><path d="M8 9 A10 10 0 0 1 18 4 L18 9 A5 5 0 0 0 14 11 Z" fill="#fdba74" opacity="0.7"/></svg>
+      </div>
+      <div class="ct-name">Sunburst</div>
+      <div class="ct-desc">Multi-level hierarchy</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('waterfall',this)">
+      <div class="ct-icon-wrap" style="background:rgba(37,99,235,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><rect x="2" y="14" width="6" height="10" rx="1" fill="#2563eb"/><rect x="10" y="8" width="6" height="6" rx="1" fill="#22c55e"/><rect x="18" y="6" width="6" height="8" rx="1" fill="#22c55e"/><rect x="26" y="12" width="6" height="4" rx="1" fill="#ef4444"/><line x1="2" y1="14" x2="36" y2="14" stroke="#94a3b8" stroke-width="0.8" stroke-dasharray="2,2"/></svg>
+      </div>
+      <div class="ct-name">Waterfall</div>
+      <div class="ct-desc">Running total</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('funnel',this)">
+      <div class="ct-icon-wrap" style="background:rgba(168,85,247,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><path d="M4 4 H32 L26 10 H10 Z" fill="#a855f7" opacity="0.85"/><path d="M10 11 H26 L22 17 H14 Z" fill="#a855f7" opacity="0.65"/><path d="M14 18 H22 L20 24 H16 Z" fill="#a855f7" opacity="0.45"/></svg>
+      </div>
+      <div class="ct-name">Funnel</div>
+      <div class="ct-desc">Sales pipeline</div>
+    </div>
+  </div>
+
+  <!-- SPECIALIZED -->
+  <div class="chart-section-label" style="color:#dc2626;border-color:#dc2626;">🎯 Specialized Charts</div>
+  <div class="chart-type-grid" style="margin-bottom:8px;">
+    <div class="chart-type-card" onclick="selectChart('radar',this)">
+      <div class="ct-icon-wrap" style="background:rgba(220,38,38,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><polygon points="18,2 32,10 28,24 8,24 4,10" fill="rgba(220,38,38,0.15)" stroke="#dc2626" stroke-width="1.5"/><polygon points="18,8 26,13 23,21 13,21 10,13" fill="rgba(220,38,38,0.25)" stroke="#dc2626" stroke-width="1" opacity="0.7"/></svg>
+      </div>
+      <div class="ct-name">Radar / Spider</div>
+      <div class="ct-desc">Multi-dimension compare</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('gauge',this)">
+      <div class="ct-icon-wrap" style="background:rgba(234,88,12,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><path d="M4 20 A14 14 0 0 1 32 20" fill="none" stroke="#e5e7eb" stroke-width="5" stroke-linecap="round"/><path d="M4 20 A14 14 0 0 1 22 7.5" fill="none" stroke="#ea580c" stroke-width="5" stroke-linecap="round"/><line x1="18" y1="20" x2="24" y2="12" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/><circle cx="18" cy="20" r="2.5" fill="#1f2937"/></svg>
+      </div>
+      <div class="ct-name">Gauge / KPI</div>
+      <div class="ct-desc">Single metric dial</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('gantt',this)">
+      <div class="ct-icon-wrap" style="background:rgba(16,185,129,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><rect x="2" y="4" width="20" height="5" rx="2" fill="#10b981"/><rect x="8" y="11" width="24" height="5" rx="2" fill="#10b981" opacity="0.7"/><rect x="4" y="18" width="16" height="5" rx="2" fill="#10b981" opacity="0.5"/><line x1="2" y1="2" x2="2" y2="26" stroke="#94a3b8" stroke-width="0.8"/></svg>
+      </div>
+      <div class="ct-name">Gantt Chart</div>
+      <div class="ct-desc">Timeline / schedule</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('candlestick',this)">
+      <div class="ct-icon-wrap" style="background:rgba(5,150,105,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><line x1="7" y1="2" x2="7" y2="26" stroke="#94a3b8" stroke-width="1"/><rect x="4" y="8" width="6" height="10" rx="1" fill="#22c55e"/><line x1="19" y1="2" x2="19" y2="26" stroke="#94a3b8" stroke-width="1"/><rect x="16" y="6" width="6" height="12" rx="1" fill="#ef4444"/><line x1="31" y1="4" x2="31" y2="26" stroke="#94a3b8" stroke-width="1"/><rect x="28" y="10" width="6" height="8" rx="1" fill="#22c55e"/></svg>
+      </div>
+      <div class="ct-name">Candlestick</div>
+      <div class="ct-desc">Financial OHLC</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('pareto',this)">
+      <div class="ct-icon-wrap" style="background:rgba(99,102,241,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><rect x="2" y="4" width="7" height="20" rx="1" fill="#6366f1"/><rect x="11" y="8" width="7" height="16" rx="1" fill="#6366f1" opacity="0.7"/><rect x="20" y="14" width="7" height="10" rx="1" fill="#6366f1" opacity="0.5"/><rect x="29" y="18" width="5" height="6" rx="1" fill="#6366f1" opacity="0.35"/><polyline points="5,4 14,8 23,14 31,18" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+      <div class="ct-name">Pareto</div>
+      <div class="ct-desc">80/20 analysis</div>
+    </div>
+    <div class="chart-type-card" onclick="selectChart('sankey',this)">
+      <div class="ct-icon-wrap" style="background:rgba(139,92,246,0.1);">
+        <svg width="36" height="28" viewBox="0 0 36 28"><path d="M2 6 Q18 6 18 14 Q18 22 34 22" fill="none" stroke="#8b5cf6" stroke-width="5" opacity="0.4"/><path d="M2 14 Q18 14 18 14 Q18 14 34 14" fill="none" stroke="#8b5cf6" stroke-width="3" opacity="0.6"/><path d="M2 20 Q18 20 18 14 Q18 8 34 8" fill="none" stroke="#8b5cf6" stroke-width="4" opacity="0.5"/></svg>
+      </div>
+      <div class="ct-name">Sankey</div>
+      <div class="ct-desc">Flow & relationships</div>
+    </div>
+  </div>
+
+  <!-- Chart Preview Area -->
+  <div id="chart-preview-area" style="display:none;margin-top:12px;">
+    <div id="chart-preview-box" class="card" style="border-radius:18px;overflow:hidden;">
+      <div class="preview-header">
+        <div style="font-family:'Cabinet Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--text);" id="chart-preview-title">Chart Preview</div>
+        <button onclick="addChartToDashboard()" style="padding:9px 20px;font-size:13px;font-family:'Instrument Sans',sans-serif;font-weight:600;">+ Add to Dashboard</button>
+      </div>
+      <!-- Axis controls -->
+      <div class="preview-controls" id="axis-controls">
+        <div class="axis-select">
+          <span style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;">X Axis</span>
+          <select id="x-axis-select" onchange="rerenderPreview()"><option>Loading...</option></select>
+        </div>
+        <div class="axis-select">
+          <span style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;">Y Axis</span>
+          <select id="y-axis-select" onchange="rerenderPreview()"><option>Loading...</option></select>
+        </div>
+        <div class="axis-select" id="color-axis-wrap" style="display:none;">
+          <span style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;">Color By</span>
+          <select id="color-axis-select" onchange="rerenderPreview()"><option value="">None</option></select>
+        </div>
+      </div>
+      <div id="chart-preview-plot" style="height:380px;padding:12px 16px 16px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TAB: AI Suggestions ══════════ -->
+<div id="panel-suggest" class="panel">
+  <div id="suggest-loading" style="text-align:center;padding:40px;color:var(--text2);">
+    <div style="font-size:32px;margin-bottom:12px;animation:float 2s ease-in-out infinite;">✨</div>
+    AI is analyzing your data to suggest the best charts...
+  </div>
+  <div id="suggest-content" style="display:none;">
+    <div style="margin-bottom:20px;">
+      <h3 style="font-size:16px;margin-bottom:6px;font-family:'Cabinet Grotesk',sans-serif;">AI-Recommended Charts</h3>
+      <p style="font-size:13px;color:var(--text2);">Based on your actual column types and data distribution</p>
+    </div>
+    <div id="suggest-list"></div>
+  </div>
+</div>
+
+<!-- ══════════ TAB: Manual Edit ══════════ -->
+<div id="panel-edit" class="panel">
+  <div style="margin-bottom:20px;">
+    <h3 style="font-size:16px;margin-bottom:6px;font-family:'Cabinet Grotesk',sans-serif;">Manual Data Editing</h3>
+    <p style="font-size:13px;color:var(--text2);">Basic editing tools — changes are saved back to your file</p>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:800px;">
+    {% for tool in [
+      ('✏️','rgba(37,99,235,0.08)','Rename Column','Change column header names','rename'),
+      ('🗑️','rgba(239,68,68,0.08)','Drop Column','Remove unwanted columns','drop-col'),
+      ('🔧','rgba(5,150,105,0.08)','Fill Missing Values','Fill with mean, median, or custom','fill-missing'),
+      ('🔽','rgba(217,119,6,0.08)','Filter Rows','Keep rows matching a condition','filter-rows'),
+      ('↕️','rgba(124,58,237,0.08)','Sort Data','Sort by any column asc/desc','sort'),
+      ('🧹','rgba(8,145,178,0.08)','Remove Duplicates','Drop exact duplicate rows','drop-duplicates'),
+    ] %}
+    <div class="edit-tool" onclick="editAction('{{ tool[4] }}')">
+      <div style="width:42px;height:42px;background:{{ tool[1] }};border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">{{ tool[0] }}</div>
+      <div>
+        <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:3px;font-family:'Cabinet Grotesk',sans-serif;">{{ tool[2] }}</div>
+        <div style="font-size:12px;color:var(--text3);">{{ tool[3] }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div id="edit-modal" style="display:none;margin-top:24px;max-width:480px;padding:24px;background:var(--surface);border:1.5px solid var(--border2);border-radius:16px;"></div>
+  <div id="edit-result" style="display:none;margin-top:16px;max-width:480px;padding:14px 18px;border-radius:10px;font-size:14px;font-weight:600;"></div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+let allRows=[], allCols=[], filteredRows=[], profileData=null, selectedChartType=null;
+const COLORS=['#2563eb','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#9333ea','#0284c7','#be185d','#0d9488'];
+
+/* ── Init ── */
+async function init() {
+  const sr=await fetch('/api/session-file');
+  const sd=await sr.json();
+  if (!sd.file_path){window.location.href='/upload';return;}
+  const fname=sd.file_path.replace(/\\/g,'/').split('/').pop();
+  document.getElementById('preview-filename').textContent=fname;
+
+  const res=await fetch('/api/preview-data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:sd.file_path})});
+  const data=await res.json();
+  if(data.error){document.getElementById('loading-table').textContent='❌ '+data.error;return;}
+
+  allCols=data.columns; allRows=data.rows; filteredRows=[...allRows]; profileData=data.profile;
+
+  document.getElementById('row-count').textContent=allRows.length.toLocaleString();
+  document.getElementById('col-count').textContent=allCols.length;
+  document.getElementById('loading-table').style.display='none';
+  document.getElementById('table-wrap').style.display='block';
+
+  // Stats
+  const comp=data.profile?.completeness||100;
+  document.getElementById('data-stats').innerHTML=[
+    `<span class="stat-pill"><span class="stat-pill-dot" style="background:var(--accent);"></span>${allRows.length.toLocaleString()} rows</span>`,
+    `<span class="stat-pill"><span class="stat-pill-dot" style="background:var(--accent2);"></span>${allCols.length} columns</span>`,
+    `<span class="stat-pill"><span class="stat-pill-dot" style="background:${comp>=95?'var(--success)':comp>=80?'var(--warning)':'#ef4444'};"></span>${comp}% complete</span>`,
+  ].join('');
+
+  // Populate axis dropdowns
+  populateAxisDropdowns();
+  renderTable();
+}
+
+function populateAxisDropdowns() {
+  const numCols=allCols.filter(c=>allRows.slice(0,5).some(r=>!isNaN(parseFloat(r[c]))));
+  const allOpts=allCols.map(c=>`<option value="${c}">${c}</option>`).join('');
+  const numOpts=numCols.map(c=>`<option value="${c}">${c}</option>`).join('');
+  const catCols=allCols.filter(c=>!numCols.includes(c));
+  const catOpts=catCols.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  document.getElementById('x-axis-select').innerHTML=allOpts;
+  document.getElementById('y-axis-select').innerHTML=numOpts;
+  document.getElementById('color-axis-select').innerHTML=`<option value="">None</option>`+allOpts;
+  // Default: x=first cat col, y=first num col
+  if(catCols.length>0) document.getElementById('x-axis-select').value=catCols[0];
+  if(numCols.length>0) document.getElementById('y-axis-select').value=numCols[0];
+}
+
+/* ── Table ── */
+function renderTable(){
+  const limit=document.getElementById('rows-per-page').value;
+  const rows=limit==='all'?filteredRows:filteredRows.slice(0,parseInt(limit));
+  document.getElementById('thead').innerHTML='<tr><th>#</th>'+allCols.map(c=>`<th>${c}</th>`).join('')+'</tr>';
+  document.getElementById('tbody').innerHTML=rows.map((row,i)=>
+    `<tr><td>${i+1}</td>`+allCols.map(c=>{
+      const v=row[c]??''; const empty=v===''||v===null||String(v)==='NaN'||String(v)==='nan';
+      return `<td style="${empty?'color:#ef4444;background:rgba(239,68,68,0.04);':''}">${empty?'<em style="opacity:0.4">null</em>':String(v).substring(0,60)}</td>`;
+    }).join('')+'</tr>'
+  ).join('');
+  document.getElementById('pagination').textContent=limit==='all'?`Showing all ${filteredRows.length.toLocaleString()} rows`:`Showing ${Math.min(parseInt(limit),filteredRows.length).toLocaleString()} of ${filteredRows.length.toLocaleString()} rows`;
+}
+function filterTable(){
+  const q=document.getElementById('table-search').value.toLowerCase();
+  filteredRows=q?allRows.filter(r=>Object.values(r).some(v=>String(v).toLowerCase().includes(q))):[...allRows];
+  renderTable();
+}
+
+/* ── Tab switcher ── */
+function switchTab(tab,btn){
+  document.querySelectorAll('.ribbon-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-'+tab).classList.add('active');
+  if(tab==='profile') buildProfile();
+  if(tab==='clean') buildCleaning();
+  if(tab==='suggest') buildSuggestions();
+}
+
+/* ── Profile ── */
+function buildProfile(){
+  if(!profileData||document.getElementById('profile-content').style.display==='block') return;
+  document.getElementById('profile-loading').style.display='none';
+  document.getElementById('profile-content').style.display='block';
+  const p=profileData;
+  document.getElementById('overview-stats').innerHTML=[
+    {icon:'📋',label:'Total Rows',value:allRows.length.toLocaleString(),color:'var(--accent)'},
+    {icon:'📊',label:'Columns',value:allCols.length,color:'var(--accent2)'},
+    {icon:'✅',label:'Completeness',value:(p.completeness||0)+'%',color:'var(--success)'},
+    {icon:'⚠️',label:'Missing Cells',value:(p.total_missing||0).toLocaleString(),color:'var(--warning)'},
+  ].map(s=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;text-align:center;transition:all 0.22s;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+    <div style="font-size:22px;margin-bottom:8px;">${s.icon}</div>
+    <div style="font-size:22px;font-weight:800;color:${s.color};font-family:'Cabinet Grotesk',sans-serif;margin-bottom:4px;">${s.value}</div>
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;">${s.label}</div>
+  </div>`).join('');
+
+  document.getElementById('col-profiles').innerHTML=(p.columns||[]).map(col=>{
+    const fill=Math.round((1-col.missing_pct/100)*100);
+    const tc=col.dtype==='number'?'var(--accent)':col.dtype==='date'?'var(--accent3)':'var(--accent2)';
+    return `<div class="profile-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+        <div style="font-weight:700;font-size:14px;color:var(--text);font-family:'Cabinet Grotesk',sans-serif;">${col.name}</div>
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:rgba(37,99,235,0.08);color:${tc};">${col.dtype}</span>
+      </div>
+      ${col.dtype==='number'?`<div style="font-size:12px;color:var(--text2);line-height:1.9;">
+        <div>Min: <strong>${col.min}</strong> · Max: <strong>${col.max}</strong></div>
+        <div>Mean: <strong>${col.mean}</strong> · Median: <strong>${col.median}</strong></div>
+        <div>Std Dev: <strong>${col.std}</strong></div></div>`
+      :`<div style="font-size:12px;color:var(--text2);line-height:1.9;">
+        <div>Unique: <strong>${col.unique}</strong></div>
+        <div>Top: <strong>${col.top||'—'}</strong></div></div>`}
+      <div style="font-size:11px;color:var(--text3);margin-top:8px;">Missing: ${col.missing_pct}% (${col.missing_count} cells)</div>
+      <div class="profile-bar-bg"><div class="profile-bar-fill" style="width:${fill}%;background:${fill>90?'var(--success)':fill>70?'var(--warning)':'#ef4444'};"></div></div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Cleaning ── */
+function buildCleaning(){
+  if(document.getElementById('clean-content').style.display==='block') return;
+  setTimeout(()=>{
+    document.getElementById('clean-loading').style.display='none';
+    document.getElementById('clean-content').style.display='block';
+    const issues=[];
+    if(profileData){
+      (profileData.columns||[]).forEach(col=>{
+        if(col.missing_count>0) issues.push({icon:'⚠️',bg:'rgba(217,119,6,0.06)',bc:'rgba(217,119,6,0.2)',label:`Missing values in "${col.name}"`,detail:`${col.missing_count} cells (${col.missing_pct}%) are missing. Suggest filling with ${col.dtype==='number'?'median':'mode'}.`,fix:`Fill "${col.name}"`});
+      });
+      if(profileData.duplicates>0) issues.push({icon:'🔁',bg:'rgba(239,68,68,0.06)',bc:'rgba(239,68,68,0.18)',label:`${profileData.duplicates} duplicate rows found`,detail:'Exact duplicate rows may skew your analysis results.',fix:'Remove duplicates'});
+    }
+    if(issues.length===0) issues.push({icon:'✅',bg:'rgba(5,150,105,0.06)',bc:'rgba(5,150,105,0.18)',label:'No major issues found!',detail:'Your dataset looks clean and ready for analysis.',fix:null});
+    document.getElementById('issues-list').innerHTML=issues.map(iss=>`
+      <div class="issue-card" style="background:${iss.bg};border-color:${iss.bc};">
+        <div style="width:38px;height:38px;border-radius:10px;background:${iss.bg};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">${iss.icon}</div>
+        <div style="flex:1;"><div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px;">${iss.label}</div><div style="font-size:13px;color:var(--text2);">${iss.detail}</div></div>
+        ${iss.fix?`<button onclick="applyFix('${iss.fix}')" style="padding:7px 14px;font-size:12px;font-family:'Instrument Sans',sans-serif;font-weight:700;flex-shrink:0;">Apply Fix</button>`:''}
+      </div>`).join('');
+  },900);
+}
+
+async function runAICleaning(){
+  const btn=event.target; btn.disabled=true; btn.textContent='⏳ Asking AI...';
+  const sr=await fetch('/api/session-file');
+  const sd=await sr.json();
+  const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'Find all data quality issues in this dataset and provide specific pandas code to fix each one',file_path:sd.file_path||''})});
+  const data=await res.json();
+  btn.disabled=false; btn.textContent='🤖 Ask AI to Fix All';
+  const el=document.getElementById('ai-clean-response');
+  el.style.display='block';
+  el.innerHTML='<strong style="color:var(--accent);font-family:Cabinet Grotesk,sans-serif;">🤖 AI Cleaning Plan:</strong><br><br>'+marked.parse(data.response||'');
+}
+function applyFix(fix){alert(`Fix "${fix}" — connect /api/edit-data endpoint. Backend is ready!`);}
+
+/* ── Chart selection & preview ── */
+function selectChart(type,el){
+  document.querySelectorAll('.chart-type-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedChartType=type;
+  document.getElementById('chart-preview-area').style.display='block';
+  document.getElementById('chart-preview-title').textContent=el.querySelector('.ct-name').textContent+' — Preview';
+  // Show/hide color axis
+  const needsColor=['scatter','bubble','scatter_matrix'];
+  document.getElementById('color-axis-wrap').style.display=needsColor.includes(type)?'flex':'none';
+  renderChartPreview(type);
+  // Smooth scroll to preview
+  setTimeout(()=>document.getElementById('chart-preview-area').scrollIntoView({behavior:'smooth',block:'nearest'}),100);
+}
+
+function rerenderPreview(){ if(selectedChartType) renderChartPreview(selectedChartType); }
+
+function renderChartPreview(type){
+  const xCol=document.getElementById('x-axis-select').value;
+  const yCol=document.getElementById('y-axis-select').value;
+  const colorCol=document.getElementById('color-axis-select').value;
+  if(!allRows.length||!xCol||!yCol){
+    document.getElementById('chart-preview-plot').innerHTML='<div style="text-align:center;padding:60px;color:var(--text3);font-size:13px;">No data available</div>';
+    return;
+  }
+
+  const xVals=allRows.map(r=>r[xCol]);
+  const yVals=allRows.map(r=>parseFloat(r[yCol])||0);
+  const colorVals=colorCol?allRows.map(r=>r[colorCol]):null;
+  const cfg={responsive:true,displayModeBar:true,modeBarButtonsToRemove:['sendDataToCloud']};
+  const layout={height:360,paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',
+    margin:{t:10,b:60,l:60,r:20},
+    font:{size:11,color:'var(--text2)',family:'Instrument Sans,sans-serif'},
+    xaxis:{gridcolor:'var(--border)',linecolor:'var(--border)',tickfont:{color:'var(--text3)'},title:{text:xCol,font:{color:'var(--text2)'}}},
+    yaxis:{gridcolor:'var(--border)',linecolor:'var(--border)',tickfont:{color:'var(--text3)'},title:{text:yCol,font:{color:'var(--text2)'}}},
+    colorway:COLORS};
+
+  // Aggregate for categorical charts
+  const aggMap={};
+  allRows.forEach(r=>{const k=r[xCol]||'?',v=parseFloat(r[yCol])||0;aggMap[k]=(aggMap[k]||0)+v;});
+  const aggKeys=Object.keys(aggMap).slice(0,20);
+  const aggVals=aggKeys.map(k=>aggMap[k]);
+
+  let traces=[];
+  if(type==='bar')        traces=[{x:aggKeys,y:aggVals,type:'bar',marker:{color:COLORS[0],opacity:0.9}}];
+  else if(type==='hbar')  traces=[{y:aggKeys,x:aggVals,type:'bar',orientation:'h',marker:{color:COLORS[1]}}];
+  else if(type==='grouped_bar'){
+    const numCols=allCols.filter(c=>c!==xCol&&allRows.slice(0,5).some(r=>!isNaN(parseFloat(r[c]))));
+    traces=numCols.slice(0,4).map((c,i)=>{
+      const am={}; allRows.forEach(r=>{const k=r[xCol]||'?',v=parseFloat(r[c])||0;am[k]=(am[k]||0)+v;});
+      const ks=Object.keys(am).slice(0,15);
+      return {name:c,x:ks,y:ks.map(k=>am[k]),type:'bar',marker:{color:COLORS[i]}};
+    });
+    layout.barmode='group';
+  }
+  else if(type==='stacked_bar'){
+    const numCols=allCols.filter(c=>c!==xCol&&allRows.slice(0,5).some(r=>!isNaN(parseFloat(r[c]))));
+    traces=numCols.slice(0,4).map((c,i)=>{
+      const am={}; allRows.forEach(r=>{const k=r[xCol]||'?',v=parseFloat(r[c])||0;am[k]=(am[k]||0)+v;});
+      const ks=Object.keys(am).slice(0,15);
+      return {name:c,x:ks,y:ks.map(k=>am[k]),type:'bar',marker:{color:COLORS[i]}};
+    });
+    layout.barmode='stack';
+  }
+  else if(type==='line')  traces=[{x:aggKeys,y:aggVals,type:'scatter',mode:'lines+markers',line:{color:COLORS[2],width:2.5},marker:{size:6}}];
+  else if(type==='area')  traces=[{x:aggKeys,y:aggVals,type:'scatter',mode:'lines',fill:'tozeroy',line:{color:COLORS[2],width:2},fillcolor:`rgba(8,145,178,0.12)`}];
+  else if(type==='stacked_area'){
+    const numCols=allCols.filter(c=>c!==xCol&&allRows.slice(0,5).some(r=>!isNaN(parseFloat(r[c]))));
+    traces=numCols.slice(0,3).map((c,i)=>{
+      const am={}; allRows.forEach(r=>{const k=r[xCol]||'?',v=parseFloat(r[c])||0;am[k]=(am[k]||0)+v;});
+      const ks=Object.keys(am).slice(0,20);
+      return {name:c,x:ks,y:ks.map(k=>am[k]),type:'scatter',mode:'lines',fill:i===0?'tozeroy':'tonexty',line:{color:COLORS[i],width:1.5}};
+    });
+  }
+  else if(type==='step_line') traces=[{x:aggKeys,y:aggVals,type:'scatter',mode:'lines',line:{color:COLORS[0],width:2.5,shape:'hv'}}];
+  else if(type==='pie')   traces=[{labels:aggKeys,values:aggVals,type:'pie',marker:{colors:COLORS},textinfo:'label+percent'}];
+  else if(type==='donut') traces=[{labels:aggKeys,values:aggVals,type:'pie',hole:0.42,marker:{colors:COLORS},textinfo:'label+percent'}];
+  else if(type==='treemap') traces=[{type:'treemap',labels:['All',...aggKeys],parents:['',...aggKeys.map(()=>'All')],values:[aggVals.reduce((a,b)=>a+b,0),...aggVals],marker:{colorscale:'Blues'}}];
+  else if(type==='sunburst') traces=[{type:'sunburst',labels:['All',...aggKeys],parents:['',...aggKeys.map(()=>'All')],values:[aggVals.reduce((a,b)=>a+b,0),...aggVals],marker:{colors:COLORS}}];
+  else if(type==='histogram') traces=[{x:yVals,type:'histogram',marker:{color:COLORS[1],opacity:0.8},nbinsx:25}];
+  else if(type==='box')   {
+    const numCols=allCols.filter(c=>allRows.slice(0,5).some(r=>!isNaN(parseFloat(r[c]))));
+    traces=numCols.slice(0,6).map((c,i)=>({y:allRows.map(r=>parseFloat(r[c])||0),type:'box',name:c,marker:{color:COLORS[i]}}));
+  }
+  else if(type==='violin'){
+    const numCols=allCols.filter(c=>allRows.slice(0,5).some(r=>!isNaN(parseFloat(r[c]))));
+    traces=numCols.slice(0,4).map((c,i)=>({y:allRows.map(r=>parseFloat(r[c])||0),type:'violin',name:c,box:{visible:true},meanline:{visible:true},fillcolor:COLORS[i],line:{color:COLORS[i]},opacity:0.7}));
+  }
+  else if(type==='heatmap'){
+    const numCols=allCols.filter(c=>allRows.slice(0,5).some(r=>!isNaN(parseFloat(r[c])))).slice(0,8);
+    const corr=computeCorr(numCols);
+    traces=[{z:corr,x:numCols,y:numCols,type:'heatmap',colorscale:'RdBu',zmid:0,text:corr.map(r=>r.map(v=>v.toFixed(2))),texttemplate:'%{text}',showscale:true}];
+    delete layout.xaxis.title; delete layout.yaxis.title;
+  }
+  else if(type==='scatter') traces=[{x:xVals,y:yVals,mode:'markers',type:'scatter',marker:{color:colorVals||COLORS[0],colorscale:colorVals?'Viridis':undefined,size:8,opacity:0.75}}];
+  else if(type==='bubble'){
+    const numCols=allCols.filter(c=>allRows.slice(0,5).some(r=>!isNaN(parseFloat(r[c]))));
+    const sizeCol=numCols[1]||numCols[0];
+    const sizeVals=allRows.map(r=>Math.abs(parseFloat(r[sizeCol])||1));
+    const maxS=Math.max(...sizeVals), minS=Math.min(...sizeVals);
+    traces=[{x:xVals,y:yVals,mode:'markers',type:'scatter',marker:{size:sizeVals.map(v=>6+((v-minS)/(maxS-minS||1))*30),color:COLORS[0],opacity:0.6,sizemode:'diameter'}}];
+  }
+  else if(type==='radar'){
+    const numCols=allCols.filter(c=>allRows.slice(0,5).some(r=>!isNaN(parseFloat(r[c])))).slice(0,6);
+    const avgs=numCols.map(c=>{const vs=allRows.map(r=>parseFloat(r[c])||0); return vs.reduce((a,b)=>a+b,0)/vs.length;});
+    traces=[{type:'scatterpolar',r:avgs,theta:numCols,fill:'toself',marker:{color:COLORS[0]}}];
+    layout.polar={radialaxis:{visible:true},bgcolor:'rgba(0,0,0,0)'};
+    delete layout.xaxis; delete layout.yaxis;
+  }
+  else if(type==='gauge'){
+    const avg=yVals.reduce((a,b)=>a+b,0)/yVals.length;
+    const mx=Math.max(...yVals);
+    traces=[{type:'indicator',mode:'gauge+number+delta',value:avg,gauge:{axis:{range:[0,mx]},bar:{color:COLORS[0]},steps:[{range:[0,mx*0.5],color:'rgba(37,99,235,0.1)'},{range:[mx*0.5,mx*0.8],color:'rgba(37,99,235,0.2)'}]}}];
+    delete layout.xaxis; delete layout.yaxis;
+  }
+  else if(type==='funnel'){
+    traces=[{type:'funnel',y:aggKeys.slice(0,6),x:aggVals.slice(0,6),textinfo:'value+percent total',marker:{color:COLORS}}];
+    delete layout.xaxis; delete layout.yaxis;
+  }
+  else if(type==='waterfall'){
+    traces=[{type:'waterfall',x:aggKeys.slice(0,10),y:aggVals.slice(0,10).map((v,i)=>i===0?v:v-aggVals[i-1]),measure:['absolute',...aggVals.slice(1,10).map(()=>'relative')],connector:{line:{color:'var(--border2)'}}}];
+  }
+  else if(type==='pareto'){
+    const sorted=[...aggKeys.map((k,i)=>({k,v:aggVals[i]}))].sort((a,b)=>b.v-a.v);
+    const total=sorted.reduce((s,d)=>s+d.v,0);
+    let cum=0; const cumPct=sorted.map(d=>{cum+=d.v;return Math.round(cum/total*100);});
+    traces=[
+      {x:sorted.map(d=>d.k),y:sorted.map(d=>d.v),type:'bar',marker:{color:COLORS[0]},name:'Count'},
+      {x:sorted.map(d=>d.k),y:cumPct,type:'scatter',mode:'lines+markers',line:{color:COLORS[3],width:2},yaxis:'y2',name:'Cumulative %'}
+    ];
+    layout.yaxis2={title:'Cumulative %',overlaying:'y',side:'right',range:[0,100],ticksuffix:'%'};
+  }
+  else if(type==='scatter_matrix'){
+    const numCols=allCols.filter(c=>allRows.slice(0,5).some(r=>!isNaN(parseFloat(r[c])))).slice(0,4);
+    const dims=numCols.map(c=>({label:c,values:allRows.map(r=>parseFloat(r[c])||0)}));
+    traces=[{type:'splom',dimensions:dims,marker:{color:COLORS[0],size:4,opacity:0.6}}];
+    delete layout.xaxis; delete layout.yaxis;
+  }
+  else if(type==='sankey'){
+    traces=[{type:'sankey',orientation:'h',
+      node:{pad:15,thickness:20,line:{color:'var(--border)',width:0.5},label:aggKeys.slice(0,8),color:COLORS},
+      link:{source:aggKeys.slice(0,6).map((_,i)=>i),target:aggKeys.slice(0,6).map((_,i)=>(i+1)%aggKeys.slice(0,8).length),value:aggVals.slice(0,6)}}];
+    delete layout.xaxis; delete layout.yaxis;
+  }
+  else if(type==='gantt'){
+    document.getElementById('chart-preview-plot').innerHTML='<div style="text-align:center;padding:60px;color:var(--text3);font-size:14px;"><div style="font-size:28px;margin-bottom:10px;">📅</div>Gantt requires date columns. Upload a dataset with start/end date columns.</div>';
+    return;
+  }
+  else if(type==='candlestick'){
+    document.getElementById('chart-preview-plot').innerHTML='<div style="text-align:center;padding:60px;color:var(--text3);font-size:14px;"><div style="font-size:28px;margin-bottom:10px;">📈</div>Candlestick requires OHLC columns (Open, High, Low, Close).</div>';
+    return;
+  }
+  else { document.getElementById('chart-preview-plot').innerHTML=`<div style="text-align:center;padding:60px;color:var(--text3);">Preview for <strong>${type}</strong> chart coming soon.</div>`; return; }
+
+  Plotly.newPlot('chart-preview-plot',traces,layout,cfg);
+}
+
+function computeCorr(cols){
+  return cols.map(c1=>cols.map(c2=>{
+    const a=allRows.map(r=>parseFloat(r[c1])||0),b=allRows.map(r=>parseFloat(r[c2])||0);
+    const ma=a.reduce((s,v)=>s+v,0)/a.length,mb=b.reduce((s,v)=>s+v,0)/b.length;
+    const num=a.reduce((s,v,i)=>s+(v-ma)*(b[i]-mb),0);
+    const den=Math.sqrt(a.reduce((s,v)=>s+(v-ma)**2,0)*b.reduce((s,v)=>s+(v-mb)**2,0));
+    return den===0?0:parseFloat((num/den).toFixed(2));
+  }));
+}
+
+function addChartToDashboard(){
+  const charts=JSON.parse(sessionStorage.getItem('dashboard_charts')||'[]');
+  const xCol=document.getElementById('x-axis-select').value;
+  const yCol=document.getElementById('y-axis-select').value;
+  charts.push({type:selectedChartType,xCol,yCol,title:selectedChartType+' chart',timestamp:Date.now()});
+  sessionStorage.setItem('dashboard_charts',JSON.stringify(charts));
+  const btn=event.target;
+  btn.textContent='✅ Added!'; btn.style.background='var(--success)';
+  setTimeout(()=>{btn.textContent='+ Add to Dashboard';btn.style.background='';},2000);
+}
+
+/* ── AI Suggestions ── */
+async function buildSuggestions(){
+  if(document.getElementById('suggest-content').style.display==='block') return;
+  const sr=await fetch('/api/session-file');
+  const sd=await sr.json();
+  const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'Based on my dataset columns and data types, suggest the 6 best charts. For each: give it a title, tell me what insight it reveals, which columns to use for X and Y axis, and provide the Plotly Python code.',file_path:sd.file_path||''})});
+  const data=await res.json();
+  document.getElementById('suggest-loading').style.display='none';
+  document.getElementById('suggest-content').style.display='block';
+  document.getElementById('suggest-list').innerHTML=`<div style="background:var(--surface);border:1.5px solid var(--border2);border-radius:16px;padding:24px;font-size:14px;line-height:1.9;">${marked.parse(data.response||'')}</div>`;
+}
+
+/* ── Edit ── */
+function editAction(action){
+  const modal=document.getElementById('edit-modal');
+  modal.style.display='block';
+  const colOpts=allCols.map(c=>`<option value="${c}">${c}</option>`).join('');
+  const actions={
+    'rename':`<h3 style="margin-bottom:14px;font-family:'Cabinet Grotesk',sans-serif;">Rename Column</h3><select id="ea-col" style="margin-bottom:10px;">${colOpts}</select><input type="text" id="ea-val" placeholder="New column name" style="margin-bottom:14px;"><button onclick="submitEdit('rename')" style="width:100%;padding:10px;font-family:'Instrument Sans',sans-serif;font-weight:700;">Rename</button>`,
+    'drop-col':`<h3 style="margin-bottom:14px;font-family:'Cabinet Grotesk',sans-serif;">Drop Column</h3><select id="ea-col" style="margin-bottom:14px;">${colOpts}</select><button onclick="submitEdit('drop-col')" style="width:100%;padding:10px;background:#ef4444;font-family:'Instrument Sans',sans-serif;font-weight:700;">Drop Column</button>`,
+    'fill-missing':`<h3 style="margin-bottom:14px;font-family:'Cabinet Grotesk',sans-serif;">Fill Missing Values</h3><select id="ea-col" style="margin-bottom:10px;">${colOpts}</select><select id="ea-val" style="margin-bottom:14px;"><option value="mean">Mean</option><option value="median">Median</option><option value="mode">Mode</option><option value="0">Zero (0)</option></select><button onclick="submitEdit('fill-missing')" style="width:100%;padding:10px;font-family:'Instrument Sans',sans-serif;font-weight:700;">Apply</button>`,
+    'filter-rows':`<h3 style="margin-bottom:14px;font-family:'Cabinet Grotesk',sans-serif;">Filter Rows</h3><select id="ea-col" style="margin-bottom:10px;">${colOpts}</select><input type="text" id="ea-val" placeholder="e.g. > 100  or  == 'North'" style="margin-bottom:14px;"><button onclick="submitEdit('filter-rows')" style="width:100%;padding:10px;font-family:'Instrument Sans',sans-serif;font-weight:700;">Apply Filter</button>`,
+    'sort':`<h3 style="margin-bottom:14px;font-family:'Cabinet Grotesk',sans-serif;">Sort Data</h3><select id="ea-col" style="margin-bottom:10px;">${colOpts}</select><select id="ea-val" style="margin-bottom:14px;"><option value="asc">Ascending ↑</option><option value="desc">Descending ↓</option></select><button onclick="submitEdit('sort')" style="width:100%;padding:10px;font-family:'Instrument Sans',sans-serif;font-weight:700;">Sort</button>`,
+    'drop-duplicates':`<h3 style="margin-bottom:14px;font-family:'Cabinet Grotesk',sans-serif;">Remove Duplicates</h3><p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Remove all exact duplicate rows from the dataset.</p><button onclick="submitEdit('drop-duplicates')" style="width:100%;padding:10px;font-family:'Instrument Sans',sans-serif;font-weight:700;">Remove Duplicates</button>`,
+  };
+  modal.innerHTML=(actions[action]||'')+`<button onclick="document.getElementById('edit-modal').style.display='none'" style="width:100%;margin-top:8px;padding:9px;background:transparent;border:1.5px solid var(--border2);color:var(--text2);font-family:'Instrument Sans',sans-serif;cursor:pointer;border-radius:10px;">Cancel</button>`;
+}
+
+async function submitEdit(action){
+  const col=document.getElementById('ea-col')?.value||'';
+  const val=document.getElementById('ea-val')?.value||'';
+  const sr=await fetch('/api/session-file');
+  const sd=await sr.json();
+  const res=await fetch('/api/edit-data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,column:col,value:val,file_path:sd.file_path})});
+  const data=await res.json();
+  document.getElementById('edit-modal').style.display='none';
+  const result=document.getElementById('edit-result');
+  result.style.display='block';
+  result.style.cssText=`display:block;margin-top:16px;max-width:480px;padding:14px 18px;border-radius:10px;font-size:14px;font-weight:600;background:${data.error?'rgba(239,68,68,0.08)':'rgba(5,150,105,0.08)'};border:1.5px solid ${data.error?'rgba(239,68,68,0.2)':'rgba(5,150,105,0.2)'};color:${data.error?'#ef4444':'var(--success)'}`;
+  result.textContent=(data.error?'❌ ':'✅ ')+(data.error||data.message||'Done!');
+}
+
+init();
+</script>
+{% endblock %}

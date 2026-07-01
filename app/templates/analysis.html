@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Data Analysis Studio — Grivora AI{% endblock %}
+{% block content %}
+<div style="min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:80px 40px;">
+  <span class="chip chip-blue" style="margin-bottom:24px;">01 · Data Analysis</span>
+  <h1 class="t-heading" style="font-size:40px;margin-bottom:16px;">Data Analysis Studio</h1>
+  <p style="color:var(--text2);font-size:17px;max-width:480px;line-height:1.75;margin-bottom:40px;">Upload your dataset to start exploring, cleaning, profiling, and visualizing your data with AI assistance.</p>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;">
+    <a href="/upload" class="btn btn-primary" style="font-size:15px;padding:13px 28px;">⬆ Upload Data</a>
+    <a href="/chat" class="btn btn-secondary" style="font-size:15px;padding:13px 24px;">💬 AI Chat</a>
+    <a href="/" class="btn btn-ghost" style="font-size:15px;padding:13px 24px;">← Home</a>
+  </div>
+</div>
+{% endblock %}

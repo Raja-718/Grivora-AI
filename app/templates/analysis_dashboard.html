@@ -1,0 +1,552 @@
+{% extends "base.html" %}
+{% block title %}Analysis Dashboard — DataPulse AI{% endblock %}
+{% block head %}
+<style>
+/* ══ Toolbar ══ */
+.dash-toolbar {
+  display:flex; align-items:center; gap:10px;
+  padding:12px 24px; background:var(--surface);
+  border-bottom:2px solid var(--border);
+  position:sticky; top:66px; z-index:50; flex-wrap:wrap;
+}
+
+/* ══ Grid ══ */
+#chart-grid {
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:16px; padding:20px;
+  min-height:calc(100vh - 200px);
+  align-content:start;
+}
+#chart-grid.layout-1 { grid-template-columns:1fr; }
+#chart-grid.layout-2 { grid-template-columns:repeat(2,1fr); }
+#chart-grid.layout-3 { grid-template-columns:repeat(3,1fr); }
+#chart-grid.layout-4 { grid-template-columns:repeat(4,1fr); }
+
+/* ══ Chart Widget ══ */
+.chart-widget {
+  background:var(--surface);
+  border:1.5px solid var(--border);
+  border-radius:16px; overflow:hidden;
+  position:relative; transition:all 0.28s var(--ease);
+  min-height:320px; display:flex; flex-direction:column;
+}
+.chart-widget:hover { border-color:var(--border2); box-shadow:var(--shadow-md); }
+.chart-widget.size-full { grid-column:span 2; }
+.chart-widget.size-third { grid-column:span 1; }
+.chart-widget.size-tall .chart-widget-body { height:520px; }
+
+/* ══ Widget Header ══ */
+.cwh {
+  display:flex; align-items:center; gap:8px;
+  padding:12px 16px; border-bottom:1px solid var(--border);
+  background:var(--surface2); flex-shrink:0;
+}
+.cwh-title {
+  font-family:'Cabinet Grotesk',sans-serif;
+  font-weight:700; font-size:14px; color:var(--text);
+  flex:1; outline:none; border:none; background:transparent;
+  cursor:text;
+}
+.cwh-title:focus { color:var(--accent); }
+.cwh-btn {
+  width:28px; height:28px; border-radius:8px;
+  border:1.5px solid var(--border); background:var(--surface);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:13px; transition:all 0.2s;
+  flex-shrink:0; color:var(--text2);
+}
+.cwh-btn:hover { border-color:var(--border2); background:var(--surface2); color:var(--text); transform:scale(1.08); }
+.cwh-btn.del:hover { background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.3); color:#ef4444; }
+.cwh-btn.expand-btn:hover { background:rgba(37,99,235,0.08); border-color:var(--accent); color:var(--accent); }
+
+/* ══ Axis config panel ══ */
+.axis-panel {
+  display:none; padding:12px 16px;
+  background:var(--bg2); border-bottom:1px solid var(--border);
+  flex-wrap:wrap; gap:10px; align-items:center;
+}
+.axis-panel.open { display:flex; }
+.axis-select-inline {
+  display:flex; align-items:center; gap:6px;
+  padding:6px 10px; background:var(--surface);
+  border:1.5px solid var(--border2); border-radius:9px;
+  font-size:12px;
+}
+.axis-select-inline label { font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap; }
+.axis-select-inline select {
+  background:transparent; border:none; outline:none;
+  color:var(--text); font-family:'Instrument Sans',sans-serif;
+  font-size:12px; font-weight:600; cursor:pointer; min-width:90px;
+}
+
+/* ══ Widget body ══ */
+.chart-widget-body { flex:1; min-height:280px; padding:8px; position:relative; }
+.chart-widget-body .plotly-chart { width:100%; height:100%; }
+
+/* ══ Fullscreen overlay ══ */
+#fullscreen-overlay {
+  display:none; position:fixed; inset:0; z-index:300;
+  background:rgba(0,0,0,0.7); backdrop-filter:blur(6px);
+  align-items:center; justify-content:center;
+}
+#fullscreen-overlay.open { display:flex; }
+#fullscreen-box {
+  background:var(--surface); border:1px solid var(--border2);
+  border-radius:20px; width:92vw; max-width:1200px;
+  height:88vh; display:flex; flex-direction:column;
+  overflow:hidden; animation:fadeUp 0.3s ease both;
+}
+#fullscreen-header { display:flex; align-items:center; padding:16px 20px; border-bottom:1px solid var(--border); gap:12px; }
+#fullscreen-plot { flex:1; padding:16px; }
+
+/* ══ Add Chart Modal ══ */
+#add-modal {
+  display:none; position:fixed; inset:0; z-index:200;
+  background:rgba(0,0,0,0.45); backdrop-filter:blur(5px);
+  align-items:center; justify-content:center;
+}
+#add-modal.open { display:flex; }
+#add-modal-box {
+  background:var(--surface); border:1.5px solid var(--border2);
+  border-radius:22px; width:100%; max-width:680px;
+  max-height:85vh; overflow-y:auto;
+  animation:fadeUp 0.3s ease both; padding:28px;
+}
+
+/* Modal chart grid */
+.modal-chart-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:14px 0; }
+.modal-ct {
+  padding:14px 6px 10px; background:var(--surface2);
+  border:1.5px solid var(--border); border-radius:12px;
+  text-align:center; cursor:pointer; transition:all 0.22s;
+}
+.modal-ct:hover { transform:translateY(-2px); border-color:var(--border2); box-shadow:var(--shadow-sm); }
+.modal-ct.sel { border-color:var(--accent); background:rgba(37,99,235,0.06); box-shadow:0 4px 16px rgba(37,99,235,0.15); }
+.modal-ct .mci { font-size:22px; margin-bottom:5px; }
+.modal-ct .mcn { font-size:10px; font-weight:700; color:var(--text); font-family:'Cabinet Grotesk',sans-serif; }
+
+/* Modal section label */
+.modal-sec { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text3); margin:16px 0 8px; padding-left:8px; border-left:2px solid var(--accent); }
+
+/* ══ Export panel ══ */
+#export-panel {
+  display:none; position:fixed; right:20px; bottom:80px; z-index:150;
+  background:var(--surface); border:1.5px solid var(--border2);
+  border-radius:16px; padding:20px; width:210px;
+  box-shadow:var(--shadow-lg); animation:fadeUp 0.2s ease both;
+}
+.exp-btn { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:9px; border:1px solid var(--border); background:var(--surface2); color:var(--text2); font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; margin-bottom:6px; font-family:'Instrument Sans',sans-serif; width:100%; }
+.exp-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(37,99,235,0.05); }
+
+/* ══ Empty state ══ */
+#empty-state {
+  grid-column:span 2; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  min-height:380px; text-align:center; gap:16px;
+}
+
+/* ══ Toolbar buttons ══ */
+.tb-btn { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:9px; font-size:13px; font-weight:700; cursor:pointer; transition:all 0.22s; font-family:'Instrument Sans',sans-serif; border:1.5px solid; white-space:nowrap; }
+.tb-btn-primary { background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 4px 12px rgba(37,99,235,0.25); }
+.tb-btn-primary:hover { background:var(--accent-lt); transform:translateY(-1px); box-shadow:0 6px 18px rgba(37,99,235,0.35); }
+.tb-btn-ghost { background:transparent; color:var(--text2); border-color:var(--border2); }
+.tb-btn-ghost:hover { border-color:var(--accent); color:var(--accent); background:rgba(37,99,235,0.05); }
+
+/* Layout picker */
+.layout-picker { display:flex; gap:3px; padding:4px; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; }
+.lp-btn { padding:5px 11px; font-size:12px; font-weight:700; border-radius:7px; background:transparent; border:none; cursor:pointer; color:var(--text3); transition:all 0.2s; font-family:'Instrument Sans',sans-serif; }
+.lp-btn.active { background:var(--accent); color:#fff; box-shadow:0 2px 8px rgba(37,99,235,0.3); }
+</style>
+{% endblock %}
+{% block content %}
+
+<!-- ══ Toolbar ══ -->
+<div class="dash-toolbar">
+  <a href="/data-preview" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--surface2);border:1.5px solid var(--border2);border-radius:9px;font-size:13px;font-weight:600;color:var(--text2);text-decoration:none;transition:all 0.22s;font-family:'Instrument Sans',sans-serif;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Back
+  </a>
+
+  <div>
+    <div style="font-family:'Cabinet Grotesk',sans-serif;font-weight:800;font-size:17px;color:var(--text);">Analysis Dashboard</div>
+    <div id="dash-file" style="font-size:12px;color:var(--text3);"></div>
+  </div>
+
+  <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <!-- Layout picker -->
+    <div class="layout-picker">
+      <button class="lp-btn" onclick="setLayout(1)" id="l1" title="Single column">▬</button>
+      <button class="lp-btn active" onclick="setLayout(2)" id="l2" title="2 columns">⊞</button>
+      <button class="lp-btn" onclick="setLayout(3)" id="l3" title="3 columns">⊟</button>
+      <button class="lp-btn" onclick="setLayout(4)" id="l4" title="4 columns">⊠</button>
+    </div>
+
+    <button class="tb-btn tb-btn-primary" onclick="openAddModal()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Add Chart
+    </button>
+
+    <button class="tb-btn tb-btn-ghost" onclick="toggleExport()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v8M4 6l2.5 3L9 6M2 10.5h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Export
+    </button>
+
+    <button class="tb-btn tb-btn-ghost" onclick="clearDashboard()" style="color:#ef4444;border-color:rgba(239,68,68,0.25);" onmouseover="this.style.background='rgba(239,68,68,0.05)'" onmouseout="this.style.background='transparent'">
+      Clear All
+    </button>
+  </div>
+</div>
+
+<!-- ══ Dashboard Grid ══ -->
+<div id="chart-grid" class="layout-2">
+  <div id="empty-state">
+    <div style="width:72px;height:72px;background:var(--surface2);border:1.5px solid var(--border2);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:32px;animation:float 3s ease-in-out infinite;">📊</div>
+    <div style="font-family:'Cabinet Grotesk',sans-serif;font-size:20px;font-weight:800;color:var(--text);">Dashboard is empty</div>
+    <div style="font-size:14px;color:var(--text3);max-width:340px;line-height:1.65;">Click "Add Chart" to add charts with custom axes, or go back to Data Preview → Chart Types and add from there.</div>
+    <button class="tb-btn tb-btn-primary" onclick="openAddModal()" style="margin-top:4px;">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Add Your First Chart
+    </button>
+  </div>
+</div>
+
+<!-- ══ Fullscreen Overlay ══ -->
+<div id="fullscreen-overlay" onclick="if(event.target===this)closeFullscreen()">
+  <div id="fullscreen-box">
+    <div id="fullscreen-header">
+      <div style="font-family:'Cabinet Grotesk',sans-serif;font-weight:800;font-size:18px;color:var(--text);flex:1;" id="fullscreen-title">Chart</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="closeFullscreen()" style="padding:8px 18px;background:transparent;border:1.5px solid var(--border2);border-radius:9px;font-size:13px;color:var(--text2);cursor:pointer;font-family:'Instrument Sans',sans-serif;font-weight:600;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">✕ Close</button>
+      </div>
+    </div>
+    <div id="fullscreen-plot" style="flex:1;padding:20px;"></div>
+  </div>
+</div>
+
+<!-- ══ Add Chart Modal ══ -->
+<div id="add-modal" onclick="if(event.target===this)closeAddModal()">
+  <div id="add-modal-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <div style="font-family:'Cabinet Grotesk',sans-serif;font-size:20px;font-weight:800;color:var(--text);">Add Chart to Dashboard</div>
+      <button onclick="closeAddModal()" style="background:transparent;border:none;font-size:22px;cursor:pointer;color:var(--text3);line-height:1;">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:4px;">Select chart type, configure axes, then add.</p>
+
+    <div class="modal-sec">📊 Comparison</div>
+    <div class="modal-chart-grid">
+      {% for ct in [('📊','Column','bar'),('↔️','H. Bar','hbar'),('📊','Grouped','grouped_bar'),('📊','Stacked','stacked_bar')] %}
+      <div class="modal-ct" onclick="selectModalChart('{{ ct[2] }}',this)"><div class="mci">{{ ct[0] }}</div><div class="mcn">{{ ct[1] }}</div></div>
+      {% endfor %}
+    </div>
+
+    <div class="modal-sec">📈 Trend</div>
+    <div class="modal-chart-grid">
+      {% for ct in [('📈','Line','line'),('🏔️','Area','area'),('📈','Stacked Area','stacked_area'),('📐','Step Line','step_line')] %}
+      <div class="modal-ct" onclick="selectModalChart('{{ ct[2] }}',this)"><div class="mci">{{ ct[0] }}</div><div class="mcn">{{ ct[1] }}</div></div>
+      {% endfor %}
+    </div>
+
+    <div class="modal-sec">📉 Distribution</div>
+    <div class="modal-chart-grid">
+      {% for ct in [('📉','Histogram','histogram'),('📦','Box Plot','box'),('🎻','Violin','violin'),('🌡️','Heatmap','heatmap')] %}
+      <div class="modal-ct" onclick="selectModalChart('{{ ct[2] }}',this)"><div class="mci">{{ ct[0] }}</div><div class="mcn">{{ ct[1] }}</div></div>
+      {% endfor %}
+    </div>
+
+    <div class="modal-sec">🥧 Part-to-Whole</div>
+    <div class="modal-chart-grid">
+      {% for ct in [('🥧','Pie','pie'),('🍩','Donut','donut'),('🗺️','Treemap','treemap'),('☀️','Sunburst','sunburst'),('🌊','Waterfall','waterfall'),('📐','Funnel','funnel')] %}
+      <div class="modal-ct" onclick="selectModalChart('{{ ct[2] }}',this)"><div class="mci">{{ ct[0] }}</div><div class="mcn">{{ ct[1] }}</div></div>
+      {% endfor %}
+    </div>
+
+    <div class="modal-sec">🎯 Specialized</div>
+    <div class="modal-chart-grid">
+      {% for ct in [('🔵','Scatter','scatter'),('🫧','Bubble','bubble'),('🕸️','Radar','radar'),('🎯','Gauge','gauge'),('📊','Pareto','pareto')] %}
+      <div class="modal-ct" onclick="selectModalChart('{{ ct[2] }}',this)"><div class="mci">{{ ct[0] }}</div><div class="mcn">{{ ct[1] }}</div></div>
+      {% endfor %}
+    </div>
+
+    <!-- Axis configuration -->
+    <div style="margin-top:20px;padding:16px;background:var(--surface2);border:1.5px solid var(--border);border-radius:14px;">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3);margin-bottom:14px;">Configure Axes</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;">X Axis / Category</label>
+          <select id="modal-x" style="width:100%;padding:9px 10px;border-radius:9px;background:var(--surface);border:1.5px solid var(--border);color:var(--text);font-family:'Instrument Sans',sans-serif;font-size:13px;"></select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;">Y Axis / Value</label>
+          <select id="modal-y" style="width:100%;padding:9px 10px;border-radius:9px;background:var(--surface);border:1.5px solid var(--border);color:var(--text);font-family:'Instrument Sans',sans-serif;font-size:13px;"></select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;">Color / Group By</label>
+          <select id="modal-color" style="width:100%;padding:9px 10px;border-radius:9px;background:var(--surface);border:1.5px solid var(--border);color:var(--text);font-family:'Instrument Sans',sans-serif;font-size:13px;"><option value="">None</option></select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;">Chart Title</label>
+          <input type="text" id="modal-title" placeholder="e.g. Monthly Revenue" style="padding:9px 12px;border-radius:9px;background:var(--surface);border:1.5px solid var(--border);color:var(--text);font-family:'Instrument Sans',sans-serif;font-size:13px;width:100%;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;">Width</label>
+          <select id="modal-size" style="width:100%;padding:9px 10px;border-radius:9px;background:var(--surface);border:1.5px solid var(--border);color:var(--text);font-family:'Instrument Sans',sans-serif;font-size:13px;">
+            <option value="size-third">Half Width</option>
+            <option value="size-full">Full Width</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <button onclick="confirmAddChart()" style="width:100%;padding:14px;font-size:15px;font-family:'Instrument Sans',sans-serif;font-weight:700;border-radius:12px;margin-top:16px;">Add to Dashboard →</button>
+  </div>
+</div>
+
+<!-- ══ Export Panel ══ -->
+<div id="export-panel">
+  <div style="font-family:'Cabinet Grotesk',sans-serif;font-weight:800;font-size:15px;color:var(--text);margin-bottom:14px;">Export Dashboard</div>
+  <button class="exp-btn" onclick="doExport('png')">🖼️ &nbsp;PNG Image</button>
+  <button class="exp-btn" onclick="doExport('pdf')">📄 &nbsp;PDF Document</button>
+  <button class="exp-btn" onclick="doExport('html')">🌐 &nbsp;HTML Report</button>
+  <button onclick="toggleExport()" style="width:100%;margin-top:10px;padding:8px;background:transparent;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text3);cursor:pointer;font-family:'Instrument Sans',sans-serif;">Close</button>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+let allRows=[], allCols=[], chartCount=0, selectedModalType=null, fullscreenType=null, fullscreenX=null, fullscreenY=null;
+const COLORS=['#2563eb','#7c3aed','#0891b2','#059669','#d97706','#dc2626','#9333ea','#ea580c','#be185d','#0d9488'];
+
+const mkLayout=(extra={},h=290)=>({
+  margin:{t:10,b:45,l:45,r:15}, height:h,
+  paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+  font:{size:11,color:'var(--text2)',family:'Instrument Sans,sans-serif'},
+  xaxis:{gridcolor:'var(--border)',linecolor:'rgba(0,0,0,0)',tickfont:{color:'var(--text3)'},...(extra.xaxis||{})},
+  yaxis:{gridcolor:'var(--border)',linecolor:'rgba(0,0,0,0)',tickfont:{color:'var(--text3)'},...(extra.yaxis||{})},
+  legend:{font:{color:'var(--text2)'},bgcolor:'rgba(0,0,0,0)'},
+  colorway:COLORS,...extra
+});
+const cfg={responsive:true,displayModeBar:false};
+const cfgFull={responsive:true,displayModeBar:true,modeBarButtonsToRemove:['sendDataToCloud']};
+
+/* ══ Init ══ */
+async function init(){
+  const sr=await fetch('/api/session-file');
+  const sd=await sr.json();
+  if(sd.file_path){
+    document.getElementById('dash-file').textContent=sd.file_path.replace(/\\/g,'/').split('/').pop();
+    const res=await fetch('/api/preview-data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_path:sd.file_path})});
+    const data=await res.json();
+    if(!data.error){allCols=data.columns;allRows=data.rows;}
+  }
+  populateModalDropdowns();
+  // Load charts saved from Data Preview
+  const saved=JSON.parse(sessionStorage.getItem('dashboard_charts')||'[]');
+  if(saved.length>0){
+    document.getElementById('empty-state')?.remove();
+    saved.forEach(c=>addWidget(c.type,c.title||c.type+' chart',c.xCol||allCols[0],c.yCol||allCols[1],'size-third'));
+    sessionStorage.removeItem('dashboard_charts');
+  }
+}
+
+function populateModalDropdowns(){
+  const numCols=allCols.filter(c=>allRows.slice(0,5).some(r=>!isNaN(parseFloat(r[c]))));
+  const catCols=allCols.filter(c=>!numCols.includes(c));
+  const allOpts=allCols.map(c=>`<option value="${c}">${c}</option>`).join('');
+  const numOpts=numCols.map(c=>`<option value="${c}">${c}</option>`).join('');
+  document.getElementById('modal-x').innerHTML=allOpts;
+  document.getElementById('modal-y').innerHTML=numOpts;
+  document.getElementById('modal-color').innerHTML=`<option value="">None</option>`+allOpts;
+  if(catCols.length>0) document.getElementById('modal-x').value=catCols[0];
+  if(numCols.length>0) document.getElementById('modal-y').value=numCols[0];
+}
+
+/* ══ Layout ══ */
+function setLayout(n){
+  document.getElementById('chart-grid').className='layout-'+n;
+  ['l1','l2','l3','l4'].forEach((id,i)=>document.getElementById(id).classList.toggle('active',i===n-1));
+  // Re-render all charts after layout change
+  document.querySelectorAll('.chart-widget').forEach(w=>{
+    const plotDiv=w.querySelector('[id^="pw-"]');
+    if(plotDiv) Plotly.relayout(plotDiv.id,{autosize:true});
+  });
+}
+
+/* ══ Add Modal ══ */
+function openAddModal(){ document.getElementById('add-modal').classList.add('open'); }
+function closeAddModal(){ document.getElementById('add-modal').classList.remove('open'); selectedModalType=null; document.querySelectorAll('.modal-ct').forEach(c=>c.classList.remove('sel')); }
+function selectModalChart(type,el){ selectedModalType=type; document.querySelectorAll('.modal-ct').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); }
+
+function confirmAddChart(){
+  if(!selectedModalType){alert('Please select a chart type first.');return;}
+  const title=document.getElementById('modal-title').value||selectedModalType+' chart';
+  const xCol=document.getElementById('modal-x').value;
+  const yCol=document.getElementById('modal-y').value;
+  const size=document.getElementById('modal-size').value;
+  chartCount++;
+  document.getElementById('empty-state')?.remove();
+  addWidget(selectedModalType,title,xCol,yCol,size);
+  closeAddModal();
+}
+
+/* ══ Build Widget ══ */
+function addWidget(type,title,xCol,yCol,size){
+  const pid='pw-'+Date.now()+'-'+chartCount;
+  const wid='w-'+pid;
+  const widget=document.createElement('div');
+  widget.className=`chart-widget ${size}`;
+  widget.id=wid;
+  widget.innerHTML=`
+    <!-- Header -->
+    <div class="cwh">
+      <input class="cwh-title" type="text" value="${title}" title="Click to rename">
+      <div class="cwh-btn" onclick="toggleAxisPanel('${wid}')" title="Configure axes">⚙</div>
+      <div class="cwh-btn expand-btn" onclick="openFullscreen('${pid}','${type}','${xCol}','${yCol}','${title}')" title="Fullscreen">⤢</div>
+      <div class="cwh-btn" onclick="toggleWidgetSize('${wid}')" title="Toggle full width">↔</div>
+      <div class="cwh-btn del" onclick="removeWidget('${wid}')" title="Remove">✕</div>
+    </div>
+    <!-- Axis panel -->
+    <div class="axis-panel" id="ap-${wid}">
+      <div class="axis-select-inline">
+        <label>X</label>
+        <select onchange="updateWidget('${pid}','${type}',this.value,document.getElementById('ysel-${wid}').value)" id="xsel-${wid}">
+          ${allCols.map(c=>`<option value="${c}" ${c===xCol?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="axis-select-inline">
+        <label>Y</label>
+        <select onchange="updateWidget('${pid}','${type}',document.getElementById('xsel-${wid}').value,this.value)" id="ysel-${wid}">
+          ${allCols.map(c=>`<option value="${c}" ${c===yCol?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <button onclick="updateWidget('${pid}','${type}',document.getElementById('xsel-${wid}').value,document.getElementById('ysel-${wid}').value)" style="padding:6px 14px;font-size:12px;font-family:'Instrument Sans',sans-serif;font-weight:700;border-radius:8px;">↺ Update</button>
+    </div>
+    <!-- Chart body -->
+    <div class="chart-widget-body"><div id="${pid}" style="width:100%;height:100%;"></div></div>`;
+  document.getElementById('chart-grid').appendChild(widget);
+  setTimeout(()=>renderWidget(pid,type,xCol,yCol),80);
+}
+
+function toggleAxisPanel(wid){
+  const ap=document.getElementById('ap-'+wid);
+  ap.classList.toggle('open');
+}
+
+function toggleWidgetSize(wid){
+  const w=document.getElementById(wid);
+  w.classList.toggle('size-full');
+  w.classList.toggle('size-third');
+  setTimeout(()=>{const p=w.querySelector('[id^="pw-"]');if(p)Plotly.relayout(p.id,{autosize:true});},50);
+}
+
+function removeWidget(wid){
+  document.getElementById(wid)?.remove();
+  if(document.querySelectorAll('.chart-widget').length===0){
+    const e=document.createElement('div');e.id='empty-state';e.className='empty-state';
+    e.innerHTML=`<div style="font-size:32px;animation:float 3s ease-in-out infinite;">📊</div><div style="font-family:'Cabinet Grotesk',sans-serif;font-size:18px;font-weight:800;color:var(--text);">Dashboard is empty</div><div style="font-size:13px;color:var(--text3);">Add a chart to get started</div><button class="tb-btn tb-btn-primary" onclick="openAddModal()">+ Add Chart</button>`;
+    document.getElementById('chart-grid').appendChild(e);
+  }
+}
+
+function updateWidget(pid,type,xCol,yCol){ renderWidget(pid,type,xCol,yCol); }
+
+function clearDashboard(){
+  if(!confirm('Clear all charts?')) return;
+  document.querySelectorAll('.chart-widget').forEach(w=>w.remove());
+  const e=document.createElement('div');e.id='empty-state';e.className='';
+  e.innerHTML=`<div id="empty-state" style="grid-column:span 2;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:380px;text-align:center;gap:16px;"><div style="font-size:32px;">📊</div><div style="font-family:'Cabinet Grotesk',sans-serif;font-size:18px;font-weight:800;color:var(--text);">Dashboard cleared</div><button class="tb-btn tb-btn-primary" onclick="openAddModal()">+ Add Chart</button></div>`;
+  document.getElementById('chart-grid').appendChild(e);
+}
+
+/* ══ Render Chart ══ */
+function buildTraces(type,xCol,yCol,rows){
+  const xVals=rows.map(r=>r[xCol]);
+  const yVals=rows.map(r=>parseFloat(r[yCol])||0);
+  const aggMap={}; rows.forEach(r=>{const k=r[xCol]||'?',v=parseFloat(r[yCol])||0;aggMap[k]=(aggMap[k]||0)+v;});
+  const aggK=Object.keys(aggMap).slice(0,20),aggV=aggK.map(k=>aggMap[k]);
+  const numCols=allCols.filter(c=>c!==xCol&&rows.slice(0,5).some(r=>!isNaN(parseFloat(r[c]))));
+
+  if(type==='bar')         return [{x:aggK,y:aggV,type:'bar',marker:{color:COLORS[0],opacity:0.9}}];
+  if(type==='hbar')        return [{y:aggK,x:aggV,type:'bar',orientation:'h',marker:{color:COLORS[1]}}];
+  if(type==='grouped_bar'){ const t=numCols.slice(0,4).map((c,i)=>{const m={};rows.forEach(r=>{const k=r[xCol]||'?',v=parseFloat(r[c])||0;m[k]=(m[k]||0)+v;});const ks=Object.keys(m).slice(0,15);return{name:c,x:ks,y:ks.map(k=>m[k]),type:'bar',marker:{color:COLORS[i]}};});return t;}
+  if(type==='stacked_bar'){ const t=numCols.slice(0,4).map((c,i)=>{const m={};rows.forEach(r=>{const k=r[xCol]||'?',v=parseFloat(r[c])||0;m[k]=(m[k]||0)+v;});const ks=Object.keys(m).slice(0,15);return{name:c,x:ks,y:ks.map(k=>m[k]),type:'bar',marker:{color:COLORS[i]}};});return t;}
+  if(type==='line')        return [{x:aggK,y:aggV,type:'scatter',mode:'lines+markers',line:{color:COLORS[2],width:2},marker:{size:5}}];
+  if(type==='area')        return [{x:aggK,y:aggV,type:'scatter',mode:'lines',fill:'tozeroy',line:{color:COLORS[2],width:2},fillcolor:'rgba(8,145,178,0.1)'}];
+  if(type==='step_line')   return [{x:aggK,y:aggV,type:'scatter',mode:'lines',line:{color:COLORS[0],width:2,shape:'hv'}}];
+  if(type==='pie')         return [{labels:aggK,values:aggV,type:'pie',marker:{colors:COLORS},textinfo:'label+percent'}];
+  if(type==='donut')       return [{labels:aggK,values:aggV,type:'pie',hole:0.42,marker:{colors:COLORS},textinfo:'label+percent'}];
+  if(type==='histogram')   return [{x:yVals,type:'histogram',marker:{color:COLORS[1],opacity:0.8},nbinsx:20}];
+  if(type==='box')         { const cs=numCols.slice(0,5);return cs.length?cs.map((c,i)=>({y:rows.map(r=>parseFloat(r[c])||0),type:'box',name:c,marker:{color:COLORS[i]}})):[{y:yVals,type:'box',marker:{color:COLORS[0]}}]; }
+  if(type==='violin')      { const cs=numCols.slice(0,4);return cs.length?cs.map((c,i)=>({y:rows.map(r=>parseFloat(r[c])||0),type:'violin',name:c,box:{visible:true},meanline:{visible:true},fillcolor:COLORS[i],line:{color:COLORS[i]},opacity:0.7})):[{y:yVals,type:'violin',fillcolor:COLORS[0],box:{visible:true}}]; }
+  if(type==='heatmap')     { const nc=allCols.filter(c=>rows.slice(0,5).some(r=>!isNaN(parseFloat(r[c])))).slice(0,8);const corr=computeCorr(nc,rows);return [{z:corr,x:nc,y:nc,type:'heatmap',colorscale:'RdBu',zmid:0,text:corr.map(r=>r.map(v=>v.toFixed(2))),texttemplate:'%{text}',showscale:true}]; }
+  if(type==='treemap')     return [{type:'treemap',labels:['All',...aggK],parents:['',...aggK.map(()=>'All')],values:[aggV.reduce((a,b)=>a+b,0),...aggV],marker:{colorscale:'Blues'}}];
+  if(type==='sunburst')    return [{type:'sunburst',labels:['All',...aggK],parents:['',...aggK.map(()=>'All')],values:[aggV.reduce((a,b)=>a+b,0),...aggV],marker:{colors:COLORS}}];
+  if(type==='scatter')     return [{x:xVals,y:yVals,mode:'markers',type:'scatter',marker:{color:COLORS[0],size:7,opacity:0.7}}];
+  if(type==='bubble')      { const sV=rows.map(r=>Math.abs(parseFloat(r[numCols[1]||yCol])||1));const mx=Math.max(...sV),mn=Math.min(...sV);return [{x:xVals,y:yVals,mode:'markers',type:'scatter',marker:{size:sV.map(v=>6+((v-mn)/(mx-mn||1))*30),color:COLORS[0],opacity:0.6,sizemode:'diameter'}}]; }
+  if(type==='radar')       { const nc=allCols.filter(c=>rows.slice(0,5).some(r=>!isNaN(parseFloat(r[c])))).slice(0,6);const avgs=nc.map(c=>{const vs=rows.map(r=>parseFloat(r[c])||0);return vs.reduce((a,b)=>a+b,0)/vs.length;});return [{type:'scatterpolar',r:avgs,theta:nc,fill:'toself',marker:{color:COLORS[0]}}]; }
+  if(type==='gauge')       { const avg=yVals.reduce((a,b)=>a+b,0)/yVals.length,mx=Math.max(...yVals);return [{type:'indicator',mode:'gauge+number+delta',value:avg,gauge:{axis:{range:[0,mx]},bar:{color:COLORS[0]},steps:[{range:[0,mx*0.5],color:'rgba(37,99,235,0.08)'},{range:[mx*0.5,mx*0.8],color:'rgba(37,99,235,0.15)'}]}}]; }
+  if(type==='waterfall')   return [{type:'waterfall',x:aggK.slice(0,12),y:aggV.slice(0,12).map((v,i)=>i===0?v:v-aggV[i-1]),measure:['absolute',...aggV.slice(1,12).map(()=>'relative')],connector:{line:{color:'var(--border2)'}}}];
+  if(type==='funnel')      return [{type:'funnel',y:aggK.slice(0,8),x:aggV.slice(0,8),textinfo:'value+percent total',marker:{color:COLORS}}];
+  if(type==='stacked_area'){ const t=numCols.slice(0,3).map((c,i)=>{const m={};rows.forEach(r=>{const k=r[xCol]||'?',v=parseFloat(r[c])||0;m[k]=(m[k]||0)+v;});const ks=Object.keys(m).slice(0,20);return{name:c,x:ks,y:ks.map(k=>m[k]),type:'scatter',mode:'lines',fill:i===0?'tozeroy':'tonexty',line:{color:COLORS[i],width:1.5}};});return t;}
+  if(type==='pareto')      { const sorted=[...aggK.map((k,i)=>({k,v:aggV[i]}))].sort((a,b)=>b.v-a.v);const total=sorted.reduce((s,d)=>s+d.v,0);let cum=0;const cp=sorted.map(d=>{cum+=d.v;return Math.round(cum/total*100);});return [{x:sorted.map(d=>d.k),y:sorted.map(d=>d.v),type:'bar',marker:{color:COLORS[0]},name:'Count'},{x:sorted.map(d=>d.k),y:cp,type:'scatter',mode:'lines+markers',line:{color:COLORS[3],width:2},yaxis:'y2',name:'Cumulative %'}]; }
+  return [{x:aggK,y:aggV,type:'bar',marker:{color:COLORS[0]}}];
+}
+
+function buildLayoutExtra(type){
+  if(type==='stacked_bar'||type==='grouped_bar') return {barmode:type==='stacked_bar'?'stack':'group'};
+  if(type==='heatmap'||type==='treemap'||type==='sunburst'||type==='gauge'||type==='radar'||type==='funnel') return {xaxis:undefined,yaxis:undefined};
+  if(type==='pareto') return {yaxis2:{title:'Cumulative %',overlaying:'y',side:'right',range:[0,100],ticksuffix:'%'}};
+  if(type==='radar')  return {polar:{radialaxis:{visible:true},bgcolor:'rgba(0,0,0,0)'},xaxis:undefined,yaxis:undefined};
+  return {};
+}
+
+function renderWidget(pid,type,xCol,yCol){
+  if(!allRows.length){
+    document.getElementById(pid).innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:13px;">Upload a file to see data</div>';
+    return;
+  }
+  const traces=buildTraces(type,xCol,yCol,allRows);
+  const extra=buildLayoutExtra(type);
+  const layout=mkLayout(extra);
+  if(type==='heatmap'||type==='treemap'||type==='sunburst'||type==='gauge'||type==='funnel'||type==='radar') { delete layout.xaxis; delete layout.yaxis; }
+  Plotly.newPlot(pid,traces,layout,cfg);
+}
+
+/* ══ Fullscreen ══ */
+function openFullscreen(pid,type,xCol,yCol,title){
+  fullscreenType=type; fullscreenX=xCol; fullscreenY=yCol;
+  document.getElementById('fullscreen-title').textContent=title;
+  document.getElementById('fullscreen-overlay').classList.add('open');
+  const traces=buildTraces(type,xCol,yCol,allRows);
+  const extra=buildLayoutExtra(type);
+  const layout=mkLayout(extra,520);
+  if(type==='heatmap'||type==='treemap'||type==='sunburst'||type==='gauge'||type==='funnel'||type==='radar') { delete layout.xaxis; delete layout.yaxis; }
+  Plotly.newPlot('fullscreen-plot',traces,layout,cfgFull);
+}
+function closeFullscreen(){ document.getElementById('fullscreen-overlay').classList.remove('open'); Plotly.purge('fullscreen-plot'); }
+
+/* ══ Export ══ */
+function toggleExport(){ const p=document.getElementById('export-panel'); p.style.display=p.style.display==='block'?'none':'block'; }
+function doExport(fmt){
+  if(fmt==='html'){
+    const html=`<!DOCTYPE html><html><head><title>DataPulse Dashboard Export</title><script src="https://cdn.plot.ly/plotly-latest.min.js"><\/script><style>body{background:#f5f7ff;font-family:sans-serif;padding:24px;}h1{color:#0d1b3e;margin-bottom:20px;}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;}.box{background:#fff;border-radius:14px;padding:16px;border:1px solid #e4e8f8;}</style></head><body><h1>DataPulse AI — Dashboard Export</h1><div class="grid">${Array.from(document.querySelectorAll('.chart-widget')).map(w=>`<div class="box">${w.querySelector('.cwh-title').value||'Chart'}<div>${w.querySelector('[id^="pw-"]')?.innerHTML||''}</div></div>`).join('')}</div></body></html>`;
+    const blob=new Blob([html],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='dashboard.html';a.click();
+  } else { alert(fmt==='pdf'?'PDF: Use browser Print → Save as PDF':'PNG: Use browser screenshot or Print');window.print(); }
+  toggleExport();
+}
+
+/* ══ Helpers ══ */
+function computeCorr(cols,rows){
+  return cols.map(c1=>cols.map(c2=>{
+    const a=rows.map(r=>parseFloat(r[c1])||0),b=rows.map(r=>parseFloat(r[c2])||0);
+    const ma=a.reduce((s,v)=>s+v,0)/a.length,mb=b.reduce((s,v)=>s+v,0)/b.length;
+    const num=a.reduce((s,v,i)=>s+(v-ma)*(b[i]-mb),0);
+    const den=Math.sqrt(a.reduce((s,v)=>s+(v-ma)**2,0)*b.reduce((s,v)=>s+(v-mb)**2,0));
+    return den===0?0:parseFloat((num/den).toFixed(2));
+  }));
+}
+
+init();
+</script>
+{% endblock %}
